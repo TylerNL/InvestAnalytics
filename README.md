@@ -6,10 +6,14 @@
  - Now we can start the front end by navigating to the webapp folder and doing "**npm run dev**".
  - Now you should be set.
 
+# **Watchlist Details**
+ - Articles currently cached every 24 hours in cached_articles json file.
+ - News grabs from Alpha Vantage Api so you will need a key to start the backend server.
+
 ## Site Structure
 
 ```mermaid
 graph TD;
     HomePage-->About-->A["What is InvestAnalytics"];
-    HomePage-->Services-->B["What do we do for you?"];
-    HomePage-->Contact-->C["In need of support?"];
+    HomePage-->Watchlist-->B["Pick your favorite stocks/crypto to watch"];
+    HomePage-->Recent News-->C["Look at recent news articles catered to your watchlist"];
