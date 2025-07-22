@@ -51,6 +51,7 @@ def get_news():
     # Save to cache
     with open(cache_path, "w") as f:
         json.dump({"timestamp": datetime.now().isoformat(), "articles": articles}, f)
+        print("Wrote new Articles")
     limited_articles = articles[:5]
     return jsonify(limited_articles)
 

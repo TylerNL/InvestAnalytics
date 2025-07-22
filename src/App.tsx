@@ -4,6 +4,7 @@ import HomeButton from "./HomeButton.tsx";
 import MainCard from "./mainCard.tsx";
 import Watchlist from "./Watchlist.tsx";
 import News from "./News.tsx";
+import InfiniteTickerScroll from "./InfiniteTickers.tsx";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 function Home() {
@@ -16,6 +17,7 @@ function Home() {
         </h1>
       </div>
       <MainCard />
+      <InfiniteTickerScroll />
     </>
   );
 }
