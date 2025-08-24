@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+
 const Header = () => {
     const tickers = [
     'Apple (AAPL)', 
