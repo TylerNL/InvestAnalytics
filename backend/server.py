@@ -1,4 +1,3 @@
-from flask import Flask
 import yfinance as yf
 from google import genai
 from google.genai import types
@@ -6,16 +5,17 @@ import json
 import urllib.request
 import praw
 import psycopg2
+import os
+from datetime import datetime
 
-app = Flask(__name__)
 
-GEMINI_API_KEY = "AIzaSyC4ME4UV-26eLUzfTM2JMX1qZaIYubv2pE"
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-reddit_client_id = "qiYzTKOfRRdqN4JHrqJeKw"
-reddit_client_secret = "2-h5nmu_8qQ2ZuTkRaF0UJR9y0IIpQ"
-reddit_user_agent = "testscript by u/Several_Two2578"
+reddit_client_id = os.getenv("reddit_client_id")
+reddit_client_secret = os.getenv("reddit_client_secret")
+reddit_user_agent = os.getenv("reddit_user_agent")
 
-gnews_apikey = "64ebdb0b7b0e1c94e92c5f87b0d59b56"
+gnews_apikey = os.getenv("gnews_apikey")
 
 
 def add_to_db(current_stock, stock_info):
@@ -25,17 +25,33 @@ def add_to_db(current_stock, stock_info):
 
     cur.execute(f"""
                 CREATE TABLE IF NOT EXISTS {current_stock}(
-                date TEXT, high INT, low INT, close INT
+                date DATE, high FLOAT, low FLOAT, close FLOAT
                 )
                 """)
     
-    #attempting to add prediction information to database, failing due to sql error will figure out.
     for information in stock_info["forecast"]["predictions"]:
         cur.execute(f"""
-                    INSERT INTO {current_stock}
-                    (date, high, low, close)
-                    VALUES ("{information["date"]}", {information["predicted_high"]}, {information["predicted_low"]}, {information["predicted_close"]})
-                    """)
+                    INSERT INTO {current_stock} (date, high, low, close)
+                    VALUES (%s, %s, %s, %s)
+                    """, (information["date"], information["predicted_high"], information["predicted_low"], information["predicted_close"]))
+    
+    for information in stock_info["historical"]:
+        cur.execute(f"""
+                    INSERT INTO {current_stock} (date, high, low, close)
+                    VALUES (%s, %s, %s, %s)
+                    """, (information["date"], information["high"], information["low"], information["close"]))
+        
+    cur.execute(f"""
+                CREATE TABLE IF NOT EXISTS {current_stock}_gen_info(
+                last_update TIMESTAMP, outlook TEXT, confidence INT, rationale TEXT
+                )
+                """)
+    
+    cur.execute(f"""
+                INSERT INTO {current_stock}_gen_info (last_update, outlook, confidence, rationale)
+                VALUES (%s, %s, %s, %s)
+                """, (datetime.now(), stock_info["forecast"]["outlook"], stock_info["forecast"]["confidence"], stock_info["forecast"]["rationale"]))
+        
 
     conn.commit()
 
@@ -57,6 +73,7 @@ def generate_json_text(current_stock, historical_data, reddit_data, news_data):
             NO markdown formatting or code blocks,
             Use consistent prediction methodology based on technical analysis patterns,
             Maintain numerical precision to 2 decimal places.
+            Maintain consistent time intervals: Predicted dates must follow the exact same time gaps as the historical data (e.g., if historical data shows weekly intervals every Monday, predictions must be the next 3 consecutive Mondays)
 
             Input Format
             You will receive four data inputs for stock symbol {current_stock}:
@@ -169,8 +186,7 @@ def generate_json_text(current_stock, historical_data, reddit_data, news_data):
 
 def get_info(current_stock: str):
     ticker = yf.Ticker(current_stock)
-    current_historical = ticker.history(period="1y", interval="1wk")
-
+    current_historical = ticker.history(period="4mo", interval="1wk")
 
     reddit = praw.Reddit(
     client_id=reddit_client_id,
@@ -183,9 +199,11 @@ def get_info(current_stock: str):
     for submission in reddit.subreddit("all").search(f"${current_stock}",  sort = "relevance", time_filter = "month"):
         submission_count += 1
         reddit_data += f"Title: {submission.title} "
-        if len(submission.selftext) < 250:
+        if len(submission.selftext) < 200:
             reddit_data += f"Description: {submission.selftext} "
-        if submission_count == 15:
+        else:
+            reddit_data += f"Description: {submission.selftext[:200]}"
+        if submission_count == 10:
             break
 
 
@@ -195,7 +213,7 @@ def get_info(current_stock: str):
     with urllib.request.urlopen(news_url) as response:
         data = json.loads(response.read().decode("utf-8"))
         articles = data["articles"]
-        for i in range(10):
+        for i in range(7):
             news_data += f"Title: {articles[i]['title']} "
             news_data += f"Description: {articles[i]['description']} "
 
@@ -203,9 +221,8 @@ def get_info(current_stock: str):
 
 
 
-@app.route("/")
 def server_run():
-    current_stock = "nvda"
+    current_stock = "amzn"
     historical_data, reddit_data, news_data = get_info(current_stock)
     json_text = generate_json_text(current_stock, historical_data, reddit_data, news_data)
     current_information = json.loads(json_text)
@@ -213,6 +230,5 @@ def server_run():
     return current_information
 
 
-
 if __name__ == "__main__":
-    app.run(debug=True)
+    server_run()
