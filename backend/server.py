@@ -7,7 +7,11 @@ import praw
 import psycopg2
 import os
 from datetime import datetime
+import dotenv
+from urllib.parse import urlparse
 
+
+dotenv.load_dotenv()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
@@ -17,9 +21,18 @@ reddit_user_agent = os.getenv("reddit_user_agent")
 
 gnews_apikey = os.getenv("gnews_apikey")
 
+result = urlparse(os.getenv("DATABASE_URL"))
+user = result.username
+password = result.password
+database = result.path[1:]
+host = result.hostname
+port = result.port
+
+
 
 def add_to_db(current_stock, stock_info):
-    conn = psycopg2.connect(host = "localhost", dbname = "postgres", user = "postgres", password = "Password123")
+    print("connecting...")
+    conn = psycopg2.connect(dbname = database, user = user, password = password, host = host, port = port)
 
     cur = conn.cursor()
 
@@ -223,7 +236,9 @@ def get_info(current_stock: str):
 
 def server_run():
     current_stock = "amzn"
+    print("creating data")
     historical_data, reddit_data, news_data = get_info(current_stock)
+    print("importing into gemini")
     json_text = generate_json_text(current_stock, historical_data, reddit_data, news_data)
     current_information = json.loads(json_text)
     add_to_db(current_stock, current_information)
