@@ -1,9 +1,17 @@
 from flask import Flask, request, jsonify
 import psycopg2
-import json
+import os
+from urllib.parse import urlparse
 
 
 app = Flask(__name__)
+
+result = urlparse(os.getenv("DATABASE_URL"))
+user = result.username
+password = result.password
+database = result.path[1:]
+host = result.hostname
+port = result.port
 
 
 @app.route("/predictions", methods = ["GET"])
@@ -13,7 +21,7 @@ def get_stock_json():
     if symbol not in safe_symbols:
         raise ValueError
     
-    conn = psycopg2.connect(host = "localhost", dbname = "postgres", user = "postgres", password = "Password123")
+    conn = psycopg2.connect(host =host, dbname = database, user = user, password = password)
     cur = conn.cursor()
 
     prices_dict = {}
