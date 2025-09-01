@@ -25,4 +25,7 @@ __pycache__
 *.njsproj
 *.sln
 *.sw?
-backend/keys.env
+backend/.env
+.github
+.github/refresh_db.yml
+requirements.txt

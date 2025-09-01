@@ -8,6 +8,7 @@ import psycopg2
 import os
 from datetime import datetime
 from dotenv import load_dotenv 
+import time
 
 load_dotenv()
 
@@ -16,10 +17,11 @@ gemini_api = os.getenv("GEMINI_API_KEY")
 reddit_client_id = os.getenv("reddit_client_id")
 reddit_client_secret = os.getenv("reddit_client_secret")
 reddit_user_agent = os.getenv("reddit_user_agent")
+
 user= os.getenv("SUPABASE_USER")
 password=os.getenv("SUPABASE_PASS")
 host=os.getenv("SUPABASE_HOST")
-port=5432
+port=os.getenv("SUPABASE_PORT")
 database=os.getenv("SUPABASE_DB")
 
 
@@ -53,7 +55,7 @@ def add_to_db(current_stock, stock_info):
             
         cur.execute(f"""
                     CREATE TABLE IF NOT EXISTS {current_stock}_gen_info(
-                    last_update TIMESTAMP, outlook TEXT, confidence INT, rationale TEXT
+                    last_update TIMESTAMP PRIMARY KEY, outlook TEXT, confidence INT, rationale TEXT
                     )
                     """)
         
@@ -138,6 +140,8 @@ def generate_json_text(current_stock, historical_data, reddit_data, news_data):
             Sparse/poor data: -2 points
 
             Convert to percentage: (Points × 10) + 20 = Confidence %
+            Always ensure Confidence Score is between 0 and 100, no lower or greater than that range
+
             Required JSON Output Structure
             {{
             "historical": [
@@ -198,6 +202,7 @@ def generate_json_text(current_stock, historical_data, reddit_data, news_data):
 
 
 def get_info(current_stock: str):
+    print("getting historical")
     try:
         ticker = yf.Ticker(current_stock)
         current_historical = ticker.history(period="4mo", interval="1wk")
@@ -205,6 +210,7 @@ def get_info(current_stock: str):
         print(f"Error fetching historical data: {e}")
         current_historical = None
 
+    print("getting social media information")
     try:
         reddit = praw.Reddit(
             client_id=reddit_client_id,
@@ -226,6 +232,7 @@ def get_info(current_stock: str):
         print(f"Error fetching Reddit data: {e}")
         reddit_data = ""
 
+    print("getting news data")
     try:
         news_url = f"https://gnews.io/api/v4/search?q=\"${current_stock}\"&lang=en&country=us&max=10&apikey={gnews_apikey}"
         news_data = ""
@@ -244,10 +251,18 @@ def get_info(current_stock: str):
 
 
 def server_run():
-    current_stock = "amzn"
-    historical_data, reddit_data, news_data = get_info(current_stock)
-    json_text = generate_json_text(current_stock, historical_data, reddit_data, news_data)
-    current_information = json.loads(json_text)
-    add_to_db(current_stock, current_information)
-    return current_information
+    popular_stocks = ["amzn", "aapl", "nvda"]
+    for current_stock in popular_stocks:
+        print("working on", current_stock)
+        historical_data, reddit_data, news_data = get_info(current_stock)
+        print("inputting into gemini")
+        json_text = generate_json_text(current_stock, historical_data, reddit_data, news_data)
+        print("importing into database")
+        current_information = json.loads(json_text)
+        add_to_db(current_stock, current_information)
+        print("waiting on timer...")
+        time.sleep(180)
 
+
+if __name__ == '__main__':
+    server_run()
