@@ -27,7 +27,7 @@ def check_if_recent_in_db(current_stock):
     found = cur.fetchone()[0] is not None
     if found:
         cur.execute(f"SELECT last_update FROM {current_stock}_gen_info")
-        if datetime.now(timezone.utc) - cur.fetchone()[0] > timedelta(hours=6):
+        if datetime.now(timezone.utc) - cur.fetchone()[0].replace(tzinfo=timezone.utc) > timedelta(hours=6):
             cur.execute(f"DROP TABLE \"{current_stock}\", \"{current_stock}_gen_info\"")
             conn.commit()
             cur.close()
