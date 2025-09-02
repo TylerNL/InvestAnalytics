@@ -28,10 +28,10 @@ jobs:
         run: |
           python -u ./backend/routes/server.py
         env: 
-          GEMINI_API_KEY: ${{secrets.gemini_api_key}}
-          reddit_client_id: ${{secrets.reddit_client_id}}
-          reddit_client_secret: ${{secrets.reddit_client_secret}}
-          reddit_user_agent: ${{secrets.reddit_user_agent}}
+          GEMINI_API_KEY: ${{secrets.GEMINI_API_KEY}}
+          REDDIT_CLIENT_ID: ${{secrets.REDDIT_CLIENT_ID}}
+          REDDIT_CLIENT_SECRET: ${{secrets.REDDIT_CLIENT_SECRET}}
+          REDDIT_USER_AGENT: ${{secrets.REDDIT_USER_AGENT}}
           SUPABASE_USER: ${{secrets.SUPABASE_USER}}
           SUPABASE_PASS: ${{secrets.SUPABASE_PASS}}
           SUPABASE_HOST: ${{secrets.SUPABASE_HOST}}

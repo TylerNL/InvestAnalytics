@@ -12,26 +12,26 @@ import time
 
 load_dotenv()
 
-gemini_api = os.getenv("GEMINI_API_KEY")
+GEMINI_API = os.getenv("GEMINI_API_KEY")
 
-reddit_client_id = os.getenv("reddit_client_id")
-reddit_client_secret = os.getenv("reddit_client_secret")
-reddit_user_agent = os.getenv("reddit_user_agent")
+REDDIT_CLIENT_ID = os.getenv("REDDIT_CLIENT_ID")
+REDDIT_CLIENT_SECRET = os.getenv("REDDIT_CLIENT_SECRET")
+REDDIT_USER_AGENT = os.getenv("REDDIT_USER_AGENT")
 
-user= os.getenv("SUPABASE_USER")
-password=os.getenv("SUPABASE_PASS")
-host=os.getenv("SUPABASE_HOST")
-port=os.getenv("SUPABASE_PORT")
-database=os.getenv("SUPABASE_DB")
+SUPA_USER= os.getenv("SUPABASE_USER")
+SUPA_PASS=os.getenv("SUPABASE_PASS")
+SUPA_HOST=os.getenv("SUPABASE_HOST")
+SUPA_PORT=os.getenv("SUPABASE_PORT")
+SUPA_DB=os.getenv("SUPABASE_DB")
 
 
 
-gnews_apikey = os.getenv("GNEWS_API_KEY")
+GNEWS_API = os.getenv("GNEWS_API_KEY")
 
 
 def add_to_db(current_stock, stock_info):
     try:
-        conn = psycopg2.connect(dbname = database, user = user, password = password, host = host, port = port)
+        conn = psycopg2.connect(dbname = SUPA_DB, user = SUPA_USER, password = SUPA_PASS, host = SUPA_HOST, port =  SUPA_PORT)
 
         cur = conn.cursor()
 
@@ -87,7 +87,7 @@ def add_to_db(current_stock, stock_info):
         print(f"Unexpected error: {e}", flush=True)
 
 def generate_json_text(current_stock, historical_data, reddit_data, news_data):
-    client = genai.Client(api_key=gemini_api)
+    client = genai.Client(api_key=GEMINI_API)
     response = client.models.generate_content(
     model="gemini-2.5-flash",
     contents=f"""
@@ -225,9 +225,9 @@ def get_info(current_stock: str):
     print("getting social media information", flush=True)
     try:
         reddit = praw.Reddit(
-            client_id=reddit_client_id,
-            client_secret=reddit_client_secret,
-            user_agent=reddit_user_agent
+            client_id=REDDIT_CLIENT_ID,
+            client_secret=REDDIT_CLIENT_SECRET,
+            user_agent=REDDIT_USER_AGENT
         )
         reddit_data = ""
         submission_count = 0
@@ -246,7 +246,7 @@ def get_info(current_stock: str):
 
     print("getting news data", flush=True)
     try:
-        news_url = f"https://gnews.io/api/v4/search?q=\"${current_stock}\"&lang=en&country=us&max=10&apikey={gnews_apikey}"
+        news_url = f"https://gnews.io/api/v4/search?q=\"${current_stock}\"&lang=en&country=us&max=10&apikey={GNEWS_API}"
         news_data = ""
         with urllib.request.urlopen(news_url) as response:
             data = json.loads(response.read().decode("utf-8"))
@@ -264,6 +264,7 @@ def get_info(current_stock: str):
 
 def server_run():
     popular_stocks = ["amzn", "aapl", "nvda"]
+    print(SUPA_USER, SUPA_PASS, SUPA_HOST, SUPA_PORT, SUPA_DB, flush=True)
     for current_stock in popular_stocks:
         print("working on", current_stock, flush=True)
         historical_data, reddit_data, news_data = get_info(current_stock)
