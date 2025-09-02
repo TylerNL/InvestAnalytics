@@ -6,7 +6,7 @@ import urllib.request
 import praw 
 import psycopg2 
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from dotenv import load_dotenv 
 import time
 
@@ -74,7 +74,7 @@ def add_to_db(current_stock, stock_info):
         cur.execute(f"""
                     INSERT INTO {current_stock}_gen_info (last_update, outlook, confidence, rationale)
                     VALUES (%s, %s, %s, %s)
-                    """, (datetime.now(), stock_info["forecast"]["outlook"], stock_info["forecast"]["confidence"], stock_info["forecast"]["rationale"]))
+                    """, (datetime.now(timezone.utc), stock_info["forecast"]["outlook"], stock_info["forecast"]["confidence"], stock_info["forecast"]["rationale"]))
             
 
         conn.commit()
@@ -264,7 +264,6 @@ def get_info(current_stock: str):
 
 def server_run():
     popular_stocks = ["amzn", "aapl", "nvda"]
-    print(SUPA_USER, SUPA_PASS, SUPA_HOST, SUPA_PORT, SUPA_DB, flush=True)
     for current_stock in popular_stocks:
         print("working on", current_stock, flush=True)
         historical_data, reddit_data, news_data = get_info(current_stock)
@@ -274,7 +273,8 @@ def server_run():
         current_information = json.loads(json_text)
         add_to_db(current_stock, current_information)
         print("waiting on timer...", flush=True)
-        time.sleep(180)
+        if current_stock != popular_stocks[-1]:
+            time.sleep(180)
 
 
 if __name__ == '__main__':
