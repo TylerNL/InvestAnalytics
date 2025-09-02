@@ -2,7 +2,7 @@ name: Refresh Database Stocks/Cryptocurrencies
 
 on:
   schedule:
-    - cron: "15 */6 * * *"
+    - cron: "35 7 * * *"
 
 
 jobs:
