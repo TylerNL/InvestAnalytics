@@ -35,6 +35,10 @@ def add_to_db(current_stock, stock_info):
 
         cur = conn.cursor()
 
+        cur.execute(f'''
+                    DROP TABLE IF  EXISTS "{current_stock}", "{current_stock}_gen_info" 
+                    ''')
+
         cur.execute(f"""
                     CREATE TABLE IF NOT EXISTS {current_stock}(
                     date DATE, high FLOAT, low FLOAT, close FLOAT
