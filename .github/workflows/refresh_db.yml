@@ -1,0 +1,39 @@
+name: Refresh Database Stocks/Cryptocurrencies
+
+on:
+  schedule:
+    - cron: "15 */6 * * *"
+
+
+jobs:
+  run-backend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r ./backend/requirements.txt
+
+      - name: Run backend script
+        run: |
+          python server.py
+        env: 
+          GEMINI_API_KEY: ${{secrets.gemini_api_key}}
+          reddit_client_id: ${{secrets.reddit_client_id}}
+          reddit_client_secret: ${{secrets.reddit_client_secret}}
+          reddit_user_agent: ${{secrets.reddit_user_agent}}
+          SUPABASE_USER: ${{secrets.SUPABASE_USER}}
+          SUPABASE_PASS: ${{secrets.SUPABASE_PASS}}
+          SUPABASE_HOST: ${{secrets.SUPABASE_HOST}}
+          SUPABASE_PORT: ${{secrets.SUPABASE_PORT}}
+          SUPABASE_DB: ${{secrets.SUPABASE_DB}}
+          GNEWS_API_KEY: ${{secrets.GNEWS_API_KEY}}

@@ -18,7 +18,7 @@ host=os.getenv("SUPABASE_HOST")
 port=os.getenv("SUPABASE_PORT")
 database=os.getenv("SUPABASE_DB")
 
-TOP_STOCKS = {"nvda", "aapl"}
+TOP_STOCKS = {"nvda", "aapl", "amzn"}
 
 def check_if_recent_in_db(current_stock):
     conn = psycopg2.connect(dbname = database, user = user, password = password, host = host, port = port)
