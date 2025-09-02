@@ -26,3 +26,6 @@ __pycache__
 *.sln
 *.sw?
 backend/.env
+.github
+.github/refresh_db.yml
+requirements.txt

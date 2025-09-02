@@ -1,6 +1,7 @@
 import { useState } from "react";
 import IA_LOGO from "./assets/IA_LOGO.ico"
 
+
 const Header = () => {
     const tickers = [
         'Apple (AAPL)', 'Google (GOOGL)', 'Amazon (AMZN)', 'Bitcoin (BTC)', 'Tesla (TSLA)',

@@ -22,7 +22,11 @@ const tickers = [
 
 const InfiniteTickerScroll = () => {
     return (
+<<<<<<< HEAD
         <div className="w-full flex justify-center">
+=======
+        <div className="w-full flex justify-center mt-20 mb-8">
+>>>>>>> cfefbd750acae50ad881d9e40500db8c68d6e749
             <div className="w-full max-w-6xl mx-auto">
                 <div 
                     className="relative bg-black rounded-lg shadow-lg py-6 px-4 overflow-hidden"
