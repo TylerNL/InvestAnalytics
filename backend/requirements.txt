@@ -3,7 +3,6 @@ flask-cors
 psycopg2
 requests
 yfinance
-google-generativeai
+google-genai
 praw
 dotenv
-genai
