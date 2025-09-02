@@ -82,9 +82,9 @@ def add_to_db(current_stock, stock_info):
         cur.close()
         conn.close()
     except psycopg2.Error as e:
-        print(f"Database error: {e}")
+        print(f"Database error: {e}", flush=True)
     except Exception as e:
-        print(f"Unexpected error: {e}")
+        print(f"Unexpected error: {e}", flush=True)
 
 def generate_json_text(current_stock, historical_data, reddit_data, news_data):
     client = genai.Client(api_key=gemini_api)
@@ -214,15 +214,15 @@ def generate_json_text(current_stock, historical_data, reddit_data, news_data):
 
 
 def get_info(current_stock: str):
-    print("getting historical")
+    print("getting historical", flush=True)
     try:
         ticker = yf.Ticker(current_stock)
         current_historical = ticker.history(period="4mo", interval="1wk")
     except Exception as e:
-        print(f"Error fetching historical data: {e}")
+        print(f"Error fetching historical data: {e}", flush=True)
         current_historical = None
 
-    print("getting social media information")
+    print("getting social media information", flush=True)
     try:
         reddit = praw.Reddit(
             client_id=reddit_client_id,
@@ -241,10 +241,10 @@ def get_info(current_stock: str):
             if submission_count == 10:
                 break
     except Exception as e:
-        print(f"Error fetching Reddit data: {e}")
+        print(f"Error fetching Reddit data: {e}", flush=True)
         reddit_data = ""
 
-    print("getting news data")
+    print("getting news data", flush=True)
     try:
         news_url = f"https://gnews.io/api/v4/search?q=\"${current_stock}\"&lang=en&country=us&max=10&apikey={gnews_apikey}"
         news_data = ""
@@ -255,7 +255,7 @@ def get_info(current_stock: str):
                 news_data += f"Title: {articles[i]['title']} "
                 news_data += f"Description: {articles[i]['description']} "
     except Exception as e:
-        print(f"Error fetching news data: {e}")
+        print(f"Error fetching news data: {e}", flush=True)
         news_data = ""
 
     return current_historical, reddit_data, news_data
@@ -265,14 +265,14 @@ def get_info(current_stock: str):
 def server_run():
     popular_stocks = ["amzn", "aapl", "nvda"]
     for current_stock in popular_stocks:
-        print("working on", current_stock)
+        print("working on", current_stock, flush=True)
         historical_data, reddit_data, news_data = get_info(current_stock)
-        print("inputting into gemini")
+        print("inputting into gemini", flush=True)
         json_text = generate_json_text(current_stock, historical_data, reddit_data, news_data)
-        print("importing into database")
+        print("importing into database", flush=True)
         current_information = json.loads(json_text)
         add_to_db(current_stock, current_information)
-        print("waiting on timer...")
+        print("waiting on timer...", flush=True)
         time.sleep(180)
 
 

@@ -26,7 +26,7 @@ jobs:
 
       - name: Run backend script
         run: |
-          python ./backend/routes/server.py
+          python -u ./backend/routes/server.py
         env: 
           GEMINI_API_KEY: ${{secrets.gemini_api_key}}
           reddit_client_id: ${{secrets.reddit_client_id}}
