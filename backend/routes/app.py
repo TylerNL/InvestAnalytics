@@ -77,7 +77,7 @@ def get_prediction_from_database(current_stock):
 @app.route("/api/predictions", methods=["GET"])
 def predictions():
     try:
-        current_stock = request.args.get("symbol")
+        current_stock = request.args.get("symbol").lower()
         if current_stock not in TOP_STOCKS:
             if check_if_recent_in_db(current_stock) is False:
                 historical_data, reddit_data, news_data = get_info(current_stock)

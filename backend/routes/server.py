@@ -45,6 +45,10 @@ def add_to_db(current_stock, stock_info):
                     )
                     """)
         
+        cur.execute(f"""
+                    ALTER TABLE {current_stock} ENABLE ROW LEVEL SECURITY;
+                    """)
+        
         for information in stock_info["forecast"]["predictions"]:
             cur.execute(f"""
                         INSERT INTO {current_stock} (date, high, low, close)
@@ -61,6 +65,10 @@ def add_to_db(current_stock, stock_info):
                     CREATE TABLE IF NOT EXISTS {current_stock}_gen_info(
                     last_update TIMESTAMP PRIMARY KEY, outlook TEXT, confidence INT, rationale TEXT
                     )
+                    """)
+        
+        cur.execute(f"""
+                    ALTER TABLE {current_stock}_gen_info ENABLE ROW LEVEL SECURITY;
                     """)
         
         cur.execute(f"""
