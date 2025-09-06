@@ -1,6 +1,4 @@
-import yfinance as yf 
-from google import genai
-from google.genai import types 
+import yfinance as yf
 import json
 import urllib.request
 import praw 
