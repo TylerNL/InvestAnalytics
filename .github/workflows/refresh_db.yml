@@ -37,4 +37,4 @@ jobs:
           SUPABASE_HOST: ${{secrets.SUPABASE_HOST}}
           SUPABASE_PORT: ${{secrets.SUPABASE_PORT}}
           SUPABASE_DB: ${{secrets.SUPABASE_DB}}
-          GNEWS_API_KEY: ${{secrets.GNEWS_API_KEY}}
+          GNEWS_API_KEY: ${{secrets.OPENAI_API_KEY}}
