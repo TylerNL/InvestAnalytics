@@ -28,7 +28,7 @@ jobs:
         run: |
           python -u ./backend/routes/server.py
         env: 
-          GEMINI_API_KEY: ${{secrets.GEMINI_API_KEY}}
+          OPENAI_API_KEY: ${{secrets.OPENAI_API_KEY}}
           REDDIT_CLIENT_ID: ${{secrets.REDDIT_CLIENT_ID}}
           REDDIT_CLIENT_SECRET: ${{secrets.REDDIT_CLIENT_SECRET}}
           REDDIT_USER_AGENT: ${{secrets.REDDIT_USER_AGENT}}
@@ -37,4 +37,4 @@ jobs:
           SUPABASE_HOST: ${{secrets.SUPABASE_HOST}}
           SUPABASE_PORT: ${{secrets.SUPABASE_PORT}}
           SUPABASE_DB: ${{secrets.SUPABASE_DB}}
-          GNEWS_API_KEY: ${{secrets.OPENAI_API_KEY}}
+          GNEWS_API_KEY: ${{secrets.GNEWS_API_KEY}}
