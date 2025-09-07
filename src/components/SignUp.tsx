@@ -6,7 +6,7 @@ const SignUp = () => {
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState("");
-
+    
     
     return (
         <div>
