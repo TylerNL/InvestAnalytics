@@ -1,6 +1,4 @@
-import yfinance as yf 
-from google import genai
-from google.genai import types 
+import yfinance as yf
 import json
 import urllib.request
 import praw 
@@ -9,10 +7,9 @@ import os
 from datetime import datetime, timezone
 from dotenv import load_dotenv 
 import time
+from openai import OpenAI
 
 load_dotenv()
-
-GEMINI_API = os.getenv("GEMINI_API_KEY")
 
 REDDIT_CLIENT_ID = os.getenv("REDDIT_CLIENT_ID")
 REDDIT_CLIENT_SECRET = os.getenv("REDDIT_CLIENT_SECRET")
@@ -28,6 +25,7 @@ SUPA_DB=os.getenv("SUPABASE_DB")
 
 GNEWS_API = os.getenv("GNEWS_API_KEY")
 
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 def add_to_db(current_stock, stock_info):
     try:
@@ -87,10 +85,10 @@ def add_to_db(current_stock, stock_info):
         print(f"Unexpected error: {e}", flush=True)
 
 def generate_json_text(current_stock, historical_data, reddit_data, news_data):
-    client = genai.Client(api_key=GEMINI_API)
-    response = client.models.generate_content(
-    model="gemini-2.5-flash",
-    contents=f"""
+    client = OpenAI(api_key = OPENAI_API_KEY)
+    response = client.responses.create(
+        model="gpt-5-nano-2025-08-07",
+        input=f"""
             Role:
             You are a financial data analyst API endpoint. Your sole function is to analyze historical stock data and return predictions in strict JSON format.
 
@@ -101,9 +99,11 @@ def generate_json_text(current_stock, historical_data, reddit_data, news_data):
             Use consistent prediction methodology based on technical analysis patterns,
             Maintain numerical precision to 2 decimal places.
             Maintain consistent time intervals: Predicted dates must follow the exact same time gaps as the historical data (e.g., if historical data shows weekly intervals every Monday, predictions must be the next 3 consecutive Mondays)
+            Apply market realism bias: Stock predictions should account for market volatility and uncertainty - avoid overly optimistic projections
+
 
             Input Format
-            You will receive four data inputs for stock symbol {current_stock}:
+            You will receive five data inputs for stock symbol {current_stock}:
 
             HIGH_PRICES: "YYYY-MM-DD,HH:MM,PRICE" (newline-separated)
             LOW_PRICES: "YYYY-MM-DD,HH:MM,PRICE" (newline-separated)
@@ -114,7 +114,7 @@ def generate_json_text(current_stock, historical_data, reddit_data, news_data):
             Prediction Methodology:
             Use the following consistent approach:
 
-            Technical Analysis (70% weight): Calculate 7-day moving average of closing prices, determine trend direction using linear regression on last 14 data points, apply volatility analysis using standard deviation of last 7 days
+            Technical Analysis (70% weight): Calculate 7-day moving average of closing prices, determine trend direction using linear regression on last 14 data points, apply volatility analysis using standard deviation of last 7 days. Apply conservative bias: reduce projected gains by 20% and increase projected losses by 10% to account for market unpredictability.
             Sentiment Analysis (30% weight): Analyze recent news and social media using this scoring system:
 
             Very Positive: +2 points (major positive developments, strong praise)
@@ -128,15 +128,15 @@ def generate_json_text(current_stock, historical_data, reddit_data, news_data):
             Sentiment Integration Rules
 
             Calculate average sentiment score from news and social media
-            If sentiment score >= 1.0: Add 2-4% to technical prediction
+            If sentiment score >= 1.0: Add 1-3% to technical prediction
             If sentiment score <= -1.0: Subtract 2-4%% from technical prediction
             If sentiment score between -1.0 and 1.0: Adjust by sentiment score percentage
 
             Outlook Classification Rules
 
-            "raise": Technical trend > 0.5% OR sentiment score >= 1.5
-            "drop": Technical trend < -0.5% OR sentiment score <= -1.5
-            "stable": Technical trend between -0.5%% and 0.5% AND sentiment score between -1.5 and 1.5
+            "raise": Technical trend > 1% OR sentiment score >= 1.5
+            "drop": Technical trend < 1% OR sentiment score <= -1.0
+            "stable": All other scenarios
 
             Confidence Scoring Rules
             Calculate confidence using a point system, then convert to percentage:
@@ -150,6 +150,7 @@ def generate_json_text(current_stock, historical_data, reddit_data, news_data):
             Low volatility: +1 point
             Conflicting signals: -3 points
             Sparse/poor data: -2 points
+            Market uncertainty factor: -1 point (always applied to maintain realism)
 
             Convert to percentage: (Points × 10) + 20 = Confidence %
             Always ensure Confidence Score is between 0 and 100, no lower or greater than that range
@@ -204,12 +205,9 @@ def generate_json_text(current_stock, historical_data, reddit_data, news_data):
             {reddit_data}
             Final Reminder
             Respond ONLY with the JSON object. No additional text, explanations, or formatting.
-            """,
-    config={
-        "response_mime_type": "application/json",
-    },
+            """
     )
-    return response.text
+    return response.output_text
 
 
 
@@ -267,7 +265,7 @@ def server_run():
     for current_stock in popular_stocks:
         print("working on", current_stock, flush=True)
         historical_data, reddit_data, news_data = get_info(current_stock)
-        print("inputting into gemini", flush=True)
+        print("inputting into OpenAI", flush=True)
         json_text = generate_json_text(current_stock, historical_data, reddit_data, news_data)
         print("importing into database", flush=True)
         current_information = json.loads(json_text)
