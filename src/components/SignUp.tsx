@@ -19,6 +19,8 @@ const SignUp = () => {
             const result = await signUpNewUser(email, password);
             if(result.success) {
                 navigate('/watchlist');
+            } else{
+                setError(result.error.message || "Sign up failed");
             }
         }catch(err){
             setError("Error: ", err.message);
