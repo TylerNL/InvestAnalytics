@@ -12,6 +12,12 @@ const SignIn = () => {
 
     const {session, signInUser} = UserAuth() || {};
 
+    if(session){
+        return(
+            <Navigate to="/watchlist"/>
+        )
+    }
+
     const handleSignUp = async (e) => {
         e.preventDefault();
         setLoading(true);
@@ -37,7 +43,7 @@ const SignIn = () => {
                 <div className="flex flex-col py-4">
                     <input onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="p-3 mt-6" type="email"/>
                     <input onChange={(e) => setPassword(e.target.value)} placeholder="Password" className="p-3 mt-6" type="password"/>
-                    <button type="submit" disabled={loading} className="p-3 mt-6 w-full disabled:opacity-50 bg-gray-700 hover:bg-gray-500 ">Sign Up</button>
+                    <button type="submit" disabled={loading} className="p-3 mt-6 w-full disabled:opacity-50 bg-gray-700 hover:bg-gray-500 ">Sign In</button>
                     {error && <p className="text-red-600 p-6">{error}</p>}
                 </div>
             </form>
