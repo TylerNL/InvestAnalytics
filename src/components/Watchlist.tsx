@@ -1,10 +1,8 @@
-const Watchlist = () => {
-  /*
-  What we effectively need to do is create some sort of authentication method and on this specific page, we need to authenticate if the user is logged in,
-  and that their account is correctly identifiable in the database. Once done, we can present the user's favorited crypto/stock tickers if any at all.
-  
+import { UserAuth } from "../context/AuthContext";
 
-  */
+const Watchlist = () => {
+  const { session } = UserAuth() || {};
+
   return (
     <>
     <svg
@@ -34,16 +32,22 @@ const Watchlist = () => {
       </svg>
     <div className="flex items-center justify-center min-h-screen">
         <div className="bg-black bg-opacity-80 rounded-xl shadow-lg p-8 text-white max-w-2xl w-full z-10">
-          <h1 className="text-2xl font-bold mb-4 text-center">Create your own personalized watchlist with your InvestAnalytics account now!</h1>
-          <p className="text-center mb-4">Through our AI-powered prediction services, a watchlist with InvestAnalytics will allow you to view the prices of stocks and currencies that are important to you. </p>
-          <div className="flex justify-center">
-            <a
-              className="block px-6 py-3 rounded-lg text-sm font-semibold border border-[#00FFFF] text-[#00FFFF] shadow-md transition-all duration-300 hover:bg-[#00FFFF] hover:text-black hover:shadow-[0_0_20px_rgba(0,188,212,0.5)]"
-              href="/signin"
-            >
-              Sign In Now
-            </a>
-          </div>
+          {!session ? (
+            <>
+            <h1 className="text-2xl font-bold mb-4 text-center">Create your own personalized watchlist with your InvestAnalytics account now!</h1>
+            <p className="text-center mb-4">Through our AI-powered prediction services, a watchlist with InvestAnalytics will allow you to view the prices of stocks and currencies that are important to you. </p>
+            <div className="flex justify-center">
+              <a
+                className="block px-6 py-3 rounded-lg text-sm font-semibold border border-[#00FFFF] text-[#00FFFF] shadow-md transition-all duration-300 hover:bg-[#00FFFF] hover:text-black hover:shadow-[0_0_20px_rgba(0,188,212,0.5)]"
+                href="/signin"
+              >
+                Sign In Now
+              </a>
+            </div>
+            </>
+          ) : (
+            <h1 className="text-2xl font-bold mb-4 text-center">{session.user.email}</h1>
+          )}
         </div>
       </div>
     </>
