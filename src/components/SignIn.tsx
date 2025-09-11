@@ -25,6 +25,8 @@ const SignIn = () => {
             const result = await signInUser(email, password);
             if(result.success) {
                 navigate('/watchlist');
+            }else{
+                setError(result.error || "Sign in failed");
             }
         }catch(err){
             setError("Error: ", err.message);

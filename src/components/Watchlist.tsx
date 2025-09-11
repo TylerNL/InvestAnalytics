@@ -118,7 +118,7 @@ const Watchlist = () => {
                 className="block px-6 py-3 rounded-lg text-sm font-semibold border border-[#00FFFF] text-[#00FFFF] shadow-md transition-all duration-300 hover:bg-[#00FFFF] hover:text-black hover:shadow-[0_0_20px_rgba(0,188,212,0.5)]"
                 href="/signin"
               >
-                Sign Up Now
+                Sign In Now
               </a>
             </div>
           </div>
