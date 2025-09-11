@@ -12,6 +12,12 @@ const SignUp = () => {
 
     const {session, signUpNewUser} = UserAuth() || {};
 
+    if(session){
+        return(
+            <Navigate to="/watchlist"/>
+        )
+    }
+
     const handleSignUp = async (e) => {
         e.preventDefault();
         setLoading(true);
