@@ -61,7 +61,7 @@ def add_to_db(current_stock, stock_info):
             
         cur.execute(f"""
                     CREATE TABLE IF NOT EXISTS {current_stock}_gen_info(
-                    last_update TIMESTAMP PRIMARY KEY, outlook TEXT, confidence INT, rationale TEXT
+                    last_update TIMESTAMP PRIMARY KEY, last_close FLOAT, outlook TEXT, price_change FLOAT, confidence INT, rationale TEXT
                     )
                     """)
         
@@ -70,10 +70,17 @@ def add_to_db(current_stock, stock_info):
                     """)
         
         cur.execute(f"""
-                    INSERT INTO {current_stock}_gen_info (last_update, outlook, confidence, rationale)
-                    VALUES (%s, %s, %s, %s)
-                    """, (datetime.now(timezone.utc), stock_info["forecast"]["outlook"], stock_info["forecast"]["confidence"], stock_info["forecast"]["rationale"]))
-            
+                    CREATE POLICY "{current_stock}_gen_info_select"
+                    ON {current_stock}_gen_info
+                    FOR SELECT
+                    USING (true);
+                    """)
+        
+        cur.execute(f"""
+                    INSERT INTO {current_stock}_gen_info (last_update, last_close, outlook, price_change, confidence, rationale)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    """, (datetime.now(timezone.utc), stock_info["historical"][-1]["close"], stock_info["forecast"]["outlook"], stock_info["forecast"]["predictions"][0]["predicted_close"]-stock_info["historical"][-1]["close"], stock_info["forecast"]["confidence"], stock_info["forecast"]["rationale"]))
+
 
         conn.commit()
 
