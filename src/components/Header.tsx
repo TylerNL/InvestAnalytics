@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import IA_LOGO from "../assets/IA_LOGO.ico"
 
 
 const Header = () => {
+    const navigate = useNavigate();
     const tickers = [
         'Apple (AAPL)', 'Google (GOOGL)', 'Amazon (AMZN)', 'Bitcoin (BTC)', 'Tesla (TSLA)',
         'Microsoft (MSFT)', 'Meta (META)', 'Netflix (NFLX)', 'Nvidia (NVDA)', 'Ethereum (ETH)',
@@ -20,6 +22,20 @@ const Header = () => {
     const tickersDataFiltered = tickersData.filter((ticker) =>
         ticker.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    const extractTickerSymbol = (tickerString) =>{
+        const match = tickerString.match(/\(([^)]+)\)/);
+        return match ? match[1] : tickerString;
+    }
+
+    const handleTickerSelect = (ticker) => {
+        const symbol = extractTickerSymbol(ticker);
+        setSearchTerm(symbol);
+        setInputFocus(false);
+        navigate(`/currencies/${symbol}`);
+        console.log(`Navigating to currencies/${symbol}`);
+        if(menuOpen) setMenuOpen(false);
+    }
 
     return (
         <header
@@ -42,7 +58,7 @@ const Header = () => {
                     />
                     <span className="hidden sm:inline text-white">InvestAnalytics</span>
                 </a>
-
+                {/*Search bar*/}
                 <nav className="hidden md:flex items-center space-x-8">
                     <NavLink href="/" text="Home" accent />
                     <NavLink href="/Watchlist" text="Watchlist" />
@@ -63,8 +79,7 @@ const Header = () => {
                                     tickersDataFiltered.map((ticker) => (
                                         <p key={ticker} className="cursor-pointer hover:bg-yellow-500 px-2 py-1 rounded"
                                             onClick={() => {
-                                                setSearchTerm(ticker);
-                                                setInputFocus(false);
+                                                handleTickerSelect(ticker);
                                             }}>
                                             {ticker}
                                         </p>
@@ -111,8 +126,7 @@ const Header = () => {
                                     tickersDataFiltered.map((ticker) => (
                                         <p key={ticker} className="cursor-pointer hover:bg-yellow-500 px-2 py-1 rounded"
                                             onClick={() => {
-                                                setSearchTerm(ticker);
-                                                setInputFocus(false);
+                                                handleTickerSelect(ticker);
                                             }}>
                                             {ticker}
                                         </p>

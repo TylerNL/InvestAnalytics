@@ -9,7 +9,8 @@ from dotenv import load_dotenv
 import time
 from openai import OpenAI
 
-load_dotenv()
+
+load_dotenv(dotenv_path="../../.env")
 
 REDDIT_CLIENT_ID = os.getenv("REDDIT_CLIENT_ID")
 REDDIT_CLIENT_SECRET = os.getenv("REDDIT_CLIENT_SECRET")
@@ -85,10 +86,17 @@ def add_to_db(current_stock, stock_info):
         print(f"Unexpected error: {e}", flush=True)
 
 def generate_json_text(current_stock, historical_data, reddit_data, news_data):
-    client = OpenAI(api_key = OPENAI_API_KEY)
-    response = client.responses.create(
-        model="gpt-5-nano-2025-08-07",
-        input=f"""
+    client = OpenAI(api_key=OPENAI_API_KEY)
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a financial data analyst API endpoint. Your sole function is to analyze historical stock data and return predictions in strict JSON format. ALWAYS respond with valid JSON only, NO explanatory text before or after the JSON, NO markdown formatting or code blocks."
+            },
+            {
+                "role": "user",
+                "content": f"""
             Role:
             You are a financial data analyst API endpoint. Your sole function is to analyze historical stock data and return predictions in strict JSON format.
 
@@ -206,8 +214,10 @@ def generate_json_text(current_stock, historical_data, reddit_data, news_data):
             Final Reminder
             Respond ONLY with the JSON object. No additional text, explanations, or formatting.
             """
+            }
+        ]
     )
-    return response.output_text
+    return response.choices[0].message.content
 
 
 
