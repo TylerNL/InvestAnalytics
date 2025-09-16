@@ -10,19 +10,22 @@ const SignIn = () => {
 
     const {session, signInUser} = UserAuth() || {};
 
-    if (session) {
-        return <Navigate to="/watchlist" replace />;
+    if(session){
+        return(
+            <Navigate to="/watchlist"/>
+        )
     }
 
-    const handleSignIn = async (e: React.FormEvent) => {
+    const handleSignUp = async (e) => {
         e.preventDefault();
         setLoading(true);
         setError("");
         try {
-            if (signInUser) {
-                // Call the sign-in function - session will update automatically
-                await signInUser(email, password);
-                // The redirect will happen automatically when session updates
+            const result = await signInUser(email, password);
+            if(result.success) {
+                navigate('/watchlist');
+            }else{
+                setError(result.error || "Sign in failed");
             }
         } catch(err) {
             setError(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`);

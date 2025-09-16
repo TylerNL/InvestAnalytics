@@ -24,7 +24,7 @@ export const AuthContextProvider = ({children}) => {
         
 
         if (data.user.identities.length === 0) {
-            return { success: false, error: { message: "Sign up failed. User already exists." } };
+            return { success: false, error: { message: "User already exists." } };
         }
 
         return {success: true, data};

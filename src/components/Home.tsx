@@ -37,10 +37,6 @@ function Home() {
       <MainCard />
       <section className="min-h-[15vh] flex items-center justify-center w-full">
         <div className="text-white text-2xl"></div>
-        <div className="w-full bg-black py-6 flex flex-col items-center justify-center">
-          <p className="text-white text-2xl mb-4 smooth-element">Stay Up to Date With The Hottest Companies</p>
-          <InfiniteTickerScroll />
-        </div>
       </section>
       <section className="min-h-screen flex items-center justify-center">
         <div className="w-full bg-black py-6 flex flex-col items-center justify-start">
@@ -77,6 +73,11 @@ function Home() {
               </div>
           </div>
       </section>
+
+        <div className="w-full bg-black py-6 flex flex-col items-center justify-center">
+          <p className="text-white text-2xl mb-4 smooth-element">Stay Up to Date With The Hottest Companies</p>
+          <InfiniteTickerScroll />
+        </div>
 
       <section className="min-h-screen flex items-center justify-center"/>
     </>

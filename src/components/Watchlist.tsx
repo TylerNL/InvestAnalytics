@@ -1,53 +1,258 @@
+import { useState, useEffect } from "react";
+import { UserAuth } from "../context/AuthContext";
+import { supabase } from "../context/supabaseClient";
+
+const backgroundSVG = (
+    <svg
+      className="fixed inset-0 w-full h-full pointer-events-none"
+      style={{ zIndex: -1 }}
+      aria-hidden="true"
+    >
+      <defs>
+        <radialGradient id="glow" cx="50%" cy="50%" r="80%" fx="50%" fy="50%">
+          <stop offset="0%" stopColor="#00ffe7" stopOpacity="0.15" />
+          <stop offset="100%" stopColor="#10131a" stopOpacity="0.7" />
+        </radialGradient>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#glow)" />
+      <g stroke="#00ffe7" strokeOpacity="0.18">
+        <circle cx="8%" cy="20%" r="2.5" fill="#00ffe7" />
+        <circle cx="92%" cy="80%" r="2.5" fill="#00ffe7" />
+        <circle cx="50%" cy="50%" r="3.5" fill="#00ffe7" />
+        <circle cx="30%" cy="70%" r="2" fill="#00ffe7" />
+        <circle cx="70%" cy="30%" r="2" fill="#00ffe7" />
+        <line x1="8%" y1="20%" x2="50%" y2="50%" />
+        <line x1="50%" y1="50%" x2="92%" y2="80%" />
+        <line x1="30%" y1="70%" x2="70%" y2="30%" />
+        <line x1="8%" y1="20%" x2="70%" y2="30%" />
+        <line x1="30%" y1="70%" x2="92%" y2="80%" />
+      </g>
+    </svg>
+);
+
 const Watchlist = () => {
-  /*
-  What we effectively need to do is create some sort of authentication method and on this specific page, we need to authenticate if the user is logged in,
-  and that their account is correctly identifiable in the database. Once done, we can present the user's favorited crypto/stock tickers if any at all.
+  const {session} = UserAuth() || {};
+  const [watchListItems, setWatchListItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showAddTicker, setShowAddTicker] = useState(false);
+
+  const fetchWatchlist = async () => {
+      if (!session) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('watchlist')
+          .select('*')
+          .eq('user_id', session.user.id);
+
+        if (error) {
+          console.error('Error fetching watchlist:', error);
+        } else {
+          setWatchListItems(data || []);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+  const getTickerData = async (symbol: string) => {
+    try {
+      const table_name = symbol + '_gen_info';
+      const { data, error } = await supabase
+        .from(table_name)
+        .select('last_close, price_change')
+      return data;
+    } catch (error) {
+      console.error('Error fetching ticker data: ', error);
+    }
+  }
+
+  const addToDatabase = async (ticker: string) => {
+    try {
+      const currUserId = session.user.id;
+      const currSymbol = ticker.slice(ticker.lastIndexOf('(')+1, ticker.lastIndexOf(')'));
+      const tickerData = getTickerData(currSymbol.toLowerCase());
+      const currPrice = (tickerData && (await tickerData)) ? (await tickerData)[0].last_close : null;
+      const currOutlook = (tickerData && (await tickerData)) ? (await tickerData)[0].price_change : null;
+      const { error } = await supabase
+        .from('watchlist')
+        .insert({user_id: currUserId, symbol: currSymbol, current_price: currPrice, price_change: currOutlook});
+      
+      fetchWatchlist();
+    } catch (error) {
+      console.error('Error adding ticker: ', error);
+    }
+  }
+
+    useEffect(() => {
+    fetchWatchlist();
+  }, [session]);
+
+  const AddTickerModal = ({ onClose }) => {
+    const tickers = [
+        'Apple (AAPL)', 'Google (GOOGL)', 'Amazon (AMZN)', 'Bitcoin (BTC)', 'Tesla (TSLA)',
+        'Microsoft (MSFT)', 'Meta (META)', 'Netflix (NFLX)', 'Nvidia (NVDA)', 'Ethereum (ETH)',
+        'Spotify (SPOT)', 'Disney (DIS)', 'Coca-Cola (KO)', "McDonald's (MCD)", 'Visa (V)',
+        'Johnson & Johnson (JNJ)', 'Walmart (WMT)', 'Intel (INTC)', 'Adobe (ADBE)', 'Salesforce (CRM)'
+        ];
+    const [searchTerm, setSearchTerm] = useState("");
+    const [tickersData] = useState(tickers);
+    const [inputFocus, setInputFocus] = useState(false);
+
+  
+    const handleInputChange = (e) => setSearchTerm(e.target.value);
+
+    const tickersDataFiltered = tickersData.filter((ticker) =>
+        ticker.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+
+    return (<div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+      <div className="bg-black rounded-lg p-8 shadow-lg max-w-md w-full">
+        <h2 className="text-xl font-bold mb-4 text-white">Add a Ticker</h2>
+        <div className="bg-black shadow-lg rounded max-w-md w-full mx-auto z-50 p-2 max-h-48 overflow-y-auto">
+          <input
+             autoFocus
+             className="w-full rounded text-base px-4 py-2 bg-gray-900 text-white border border-gray-700 focus:border-yellow-400 transition-all"
+             type="text"
+             placeholder="Search stocks/crypto"
+             onChange={handleInputChange}
+             onFocus={() => setInputFocus(true)}
+             onBlur={() => setTimeout(() => setInputFocus(false), 150)}
+             value={searchTerm}
+         />
+        {inputFocus && (
+            <div className="bg-black shadow-lg rounded max-w-md w-full mx-auto z-50 p-2 max-h-48 overflow-y-auto">
+                {tickersDataFiltered.length > 0 ? (
+                    tickersDataFiltered.map((ticker) => (
+                        <p key={ticker} className="cursor-pointer hover:bg-yellow-500 px-2 py-1 rounded"
+                            onClick={() => {
+                                setSearchTerm(ticker);
+                                setInputFocus(false);
+                                addToDatabase(ticker);
+                                onClose();
+                            }}>
+                            {ticker}
+                        </p>
+                    ))
+                ) : (
+                    <p className="text-white px-2 py-1">No results</p>
+                )}
+            </div>
+        )}
+        </div>
+        <button
+          className="mt-4 px-4 py-2 rounded bg-cyan-500 text-white"
+          onClick={onClose}
+        >
+          Close
+        </button>
+      </div>
+    </div>);
+  }
+
   
 
-  */
-  return (
-    <>
-    <svg
-        className="fixed inset-0 w-full h-full pointer-events-none"
-        style={{ zIndex: -1 }}
-        aria-hidden="true"
-      >
-        <defs>
-          <radialGradient id="glow" cx="50%" cy="50%" r="80%" fx="50%" fy="50%">
-            <stop offset="0%" stopColor="#00ffe7" stopOpacity="0.15" />
-            <stop offset="100%" stopColor="#10131a" stopOpacity="0.7" />
-          </radialGradient>
-        </defs>
-        <rect width="100%" height="100%" fill="url(#glow)" />
-        <g stroke="#00ffe7" strokeOpacity="0.18">
-          <circle cx="8%" cy="20%" r="2.5" fill="#00ffe7" />
-          <circle cx="92%" cy="80%" r="2.5" fill="#00ffe7" />
-          <circle cx="50%" cy="50%" r="3.5" fill="#00ffe7" />
-          <circle cx="30%" cy="70%" r="2" fill="#00ffe7" />
-          <circle cx="70%" cy="30%" r="2" fill="#00ffe7" />
-          <line x1="8%" y1="20%" x2="50%" y2="50%" />
-          <line x1="50%" y1="50%" x2="92%" y2="80%" />
-          <line x1="30%" y1="70%" x2="70%" y2="30%" />
-          <line x1="8%" y1="20%" x2="70%" y2="30%" />
-          <line x1="30%" y1="70%" x2="92%" y2="80%" />
-        </g>
-      </svg>
-    <div className="flex items-center justify-center min-h-screen">
-        <div className="bg-black bg-opacity-80 rounded-xl shadow-lg p-8 text-white max-w-2xl w-full z-10">
-          <h1 className="text-2xl font-bold mb-4 text-center">Create your own personalized watchlist with your InvestAnalytics account now!</h1>
-          <p className="text-center mb-4">Through our AI-powered prediction services, a watchlist with InvestAnalytics will allow you to view the prices of stocks and currencies that are important to you. </p>
-          <div className="flex justify-center">
-            <a
-              className="block px-6 py-3 rounded-lg text-sm font-semibold border border-[#00FFFF] text-[#00FFFF] shadow-md transition-all duration-300 hover:bg-[#00FFFF] hover:text-black hover:shadow-[0_0_20px_rgba(0,188,212,0.5)]"
-              href="/signin"
-            >
-              Sign In Now
-            </a>
-          </div>
+  const removeFromWatchlist = async (itemId) => {
+    if (!session) return;
+    
+    try {
+      const { error } = await supabase
+        .from('watchlist')
+        .delete()
+        .eq('id', itemId)
+        .eq('user_id', session.user.id);
+        
+      if (error) {
+        console.error('Error removing item:', error);
+      } else {
+        // Update state to remove the item
+        setWatchListItems(watchListItems.filter(item => item.id !== itemId));
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
+
+
+
+    const authenticatedContent = (
+    <div className="container mx-auto py-8 px-4">
+      <h1 className="text-3xl font-bold mb-6 mt-14 text-white">Your Watchlist</h1>
+      
+      {loading ? (
+        <div className="flex justify-center">
+          <div className="animate-pulse text-cyan-400">Loading watchlist...</div>
+        </div>
+      ) : watchListItems.length > 0 ? (
+      <div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {watchListItems.map((item) => (
+            <div key={item.id} className="bg-black bg-opacity-80 rounded-xl p-6 shadow-md flex flex-col justify-between">
+              <div>
+                <h2 className="text-xl font-semibold mb-2 text-white">{item.symbol}</h2>
+                <p className="text-white">Current Price: ${item.current_price ? item.current_price.toFixed(2) : 'N/A'}</p>
+                <p className={`mt-1 ${item.price_change > 0 ? 'text-green-400' : item.price_change < 0 ? 'text-red-400' : 'text-yellow-400'}`}>
+                  Outlook: {item.price_change ? (item.price_change > 0 ? `+${item.price_change.toFixed(2)}` : item.price_change.toFixed(2)) : 'N/A'}
+                </p>
+              </div>
+              <button
+                className="mt-4 px-4 py-2 rounded bg-red-600 text-white hover:bg-red-500 transition-all"
+                onClick={() => removeFromWatchlist(item.id)}
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+        </div>
+        <div className="flex justify-center mt-8">
+          <button className="px-6 py-3 rounded-lg text-sm font-semibold bg-cyan-500 text-black hover:bg-cyan-400 transition-all" onClick={() => setShowAddTicker(true)}>
+            Add Ticker
+          </button>
         </div>
       </div>
+      ) : (
+        <div className="bg-black bg-opacity-80 rounded-xl p-8 text-center">
+          <p className="text-white mb-4">Your watchlist is empty. Add some stocks or cryptocurrencies to track!</p>
+          <button className="px-6 py-3 rounded-lg text-sm font-semibold bg-cyan-500 text-black hover:bg-cyan-400 transition-all" onClick={() => setShowAddTicker(true)}>
+            Add Ticker
+          </button>
+        </div>
+      )}
+      {showAddTicker && (
+        <AddTickerModal onClose={() => setShowAddTicker(false)} />
+      )}
+    </div>
+  );
+
+  const unauthenticatedContent = (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="bg-black bg-opacity-80 rounded-xl shadow-lg p-8 text-white max-w-2xl w-full z-10">
+            <h1 className="text-2xl font-bold mb-4 text-center">Create your own personalized watchlist with your InvestAnalytics account now!</h1>
+            <p className="text-center mb-4">Through our AI-powered prediction services, a watchlist with InvestAnalytics will allow you to view the prices of stocks and currencies that are important to you. </p>
+            <div className="flex justify-center">
+              <a
+                className="block px-6 py-3 rounded-lg text-sm font-semibold border border-[#00FFFF] text-[#00FFFF] shadow-md transition-all duration-300 hover:bg-[#00FFFF] hover:text-black hover:shadow-[0_0_20px_rgba(0,188,212,0.5)]"
+                href="/signin"
+              >
+                Sign In Now
+              </a>
+            </div>
+          </div>
+        </div>
+  );
+
+  return (
+    <>
+    {backgroundSVG}
+    {session ? authenticatedContent : unauthenticatedContent}
     </>
   );
 };
+
 
 export default Watchlist;

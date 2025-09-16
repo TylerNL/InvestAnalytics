@@ -12,8 +12,10 @@ const SignUp = () => {
 
     const {session, signUpNewUser} = UserAuth() || {};
 
-    if (session) {
-        return <Navigate to="/watchlist" replace />;
+    if(session){
+        return(
+            <Navigate to="/watchlist"/>
+        )
     }
 
     const handleSignUp = async (e) => {

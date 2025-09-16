@@ -62,7 +62,7 @@ def add_to_db(current_stock, stock_info):
             
         cur.execute(f"""
                     CREATE TABLE IF NOT EXISTS {current_stock}_gen_info(
-                    last_update TIMESTAMP PRIMARY KEY, outlook TEXT, confidence INT, rationale TEXT
+                    last_update TIMESTAMP PRIMARY KEY, last_close FLOAT, outlook TEXT, price_change FLOAT, confidence INT, rationale TEXT
                     )
                     """)
         
@@ -71,10 +71,17 @@ def add_to_db(current_stock, stock_info):
                     """)
         
         cur.execute(f"""
-                    INSERT INTO {current_stock}_gen_info (last_update, outlook, confidence, rationale)
-                    VALUES (%s, %s, %s, %s)
-                    """, (datetime.now(timezone.utc), stock_info["forecast"]["outlook"], stock_info["forecast"]["confidence"], stock_info["forecast"]["rationale"]))
-            
+                    CREATE POLICY "{current_stock}_gen_info_select"
+                    ON {current_stock}_gen_info
+                    FOR SELECT
+                    USING (true);
+                    """)
+        
+        cur.execute(f"""
+                    INSERT INTO {current_stock}_gen_info (last_update, last_close, outlook, price_change, confidence, rationale)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    """, (datetime.now(timezone.utc), stock_info["historical"][-1]["close"], stock_info["forecast"]["outlook"], stock_info["forecast"]["predictions"][0]["predicted_close"]-stock_info["historical"][-1]["close"], stock_info["forecast"]["confidence"], stock_info["forecast"]["rationale"]))
+
 
         conn.commit()
 
@@ -106,7 +113,7 @@ def generate_json_text(current_stock, historical_data, reddit_data, news_data):
             NO markdown formatting or code blocks,
             Use consistent prediction methodology based on technical analysis patterns,
             Maintain numerical precision to 2 decimal places.
-            Maintain consistent time intervals: Predicted dates must follow the exact same time gaps as the historical data (e.g., if historical data shows weekly intervals every Monday, predictions must be the next 3 consecutive Mondays)
+            Maintain consistent time intervals: Predicted dates must follow the exact same time gaps as the historical data (for example, if historical data shows weekly intervals every Monday, predictions must be the next 3 consecutive Mondays)
             Apply market realism bias: Stock predictions should account for market volatility and uncertainty - avoid overly optimistic projections
 
 
@@ -122,23 +129,23 @@ def generate_json_text(current_stock, historical_data, reddit_data, news_data):
             Prediction Methodology:
             Use the following consistent approach:
 
-            Technical Analysis (70% weight): Calculate 7-day moving average of closing prices, determine trend direction using linear regression on last 14 data points, apply volatility analysis using standard deviation of last 7 days. Apply conservative bias: reduce projected gains by 20% and increase projected losses by 10% to account for market unpredictability.
+            Technical Analysis (70% weight): Calculate 7-day moving average of closing prices, determine trend direction using linear regression on last 7 data points, apply volatility analysis using standard deviation of last 4 data points. Apply conservative bias: reduce projected gains by 20% and increase projected losses by 10% to account for market unpredictability.
+            
             Sentiment Analysis (30% weight): Analyze recent news and social media using this scoring system:
 
-            Very Positive: +2 points (major positive developments, strong praise)
-            Positive: +1 point (minor positive news, general optimism)
+            Very Positive: +1 points (major positive developments, strong praise)
+            Positive: +0.5 point (minor positive news, general optimism)
             Neutral: 0 points (factual reporting, mixed reactions)
-            Negative: -1 point (concerns, minor setbacks)
-            Very Negative: -2 points (major issues, strong criticism)
-
+            Negative: -0.5 point (concerns, minor setbacks)
+            Very Negative: -1 points (major issues, strong criticism)
 
 
             Sentiment Integration Rules
 
             Calculate average sentiment score from news and social media
-            If sentiment score >= 1.0: Add 1-3% to technical prediction
+            If sentiment score >= 2.0: Add 1-3% to technical prediction
             If sentiment score <= -1.0: Subtract 2-4%% from technical prediction
-            If sentiment score between -1.0 and 1.0: Adjust by sentiment score percentage
+            If sentiment score between -1.0 and 2.0: Adjust by sentiment score percentage
 
             Outlook Classification Rules
 
@@ -150,17 +157,17 @@ def generate_json_text(current_stock, historical_data, reddit_data, news_data):
             Calculate confidence using a point system, then convert to percentage:
 
             Base: 3 points
-            Strong technical trend (>2%): +3 points
-            Moderate technical trend (1-2%): +2 points
-            Substantial sentiment data with clear direction: +3 points
-            Moderate sentiment data: +2 points
-            Technical and sentiment alignment: +2 points
-            Low volatility: +1 point
-            Conflicting signals: -3 points
+            Strong technical trend (>2%): +3 points or
+            Moderate technical trend (1-2%): +2 points.
+            Substantial sentiment data with clear direction: +3 points or
+            Moderate sentiment data: +2 points.
+            Technical and sentiment alignment: +2 points or
+            Conflicting signals: -3 points.
+            Low volatility: +1 point.
             Sparse/poor data: -2 points
             Market uncertainty factor: -1 point (always applied to maintain realism)
 
-            Convert to percentage: (Points × 10) + 20 = Confidence %
+            Convert to percentage: (Points × 10) + 10 = Confidence %
             Always ensure Confidence Score is between 0 and 100, no lower or greater than that range
 
             Required JSON Output Structure
