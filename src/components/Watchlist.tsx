@@ -34,30 +34,9 @@ const Watchlist = () => {
   const {session} = UserAuth() || {};
   const [watchListItems, setWatchListItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showAddTicker, setShowAddTicker] = useState(false);
 
-  const removeFromWatchlist = async (itemId) => {
-    if (!session) return;
-    
-    try {
-      const { error } = await supabase
-        .from('watchlist')
-        .delete()
-        .eq('id', itemId)
-        .eq('user_id', session.user.id);
-        
-      if (error) {
-        console.error('Error removing item:', error);
-      } else {
-        // Update state to remove the item
-        setWatchListItems(watchListItems.filter(item => item.id !== itemId));
-      }
-    } catch (error) {
-      console.error('Error:', error);
-    }
-  };
-
-  useEffect(() => {
-    const fetchWatchlist = async () => {
+  const fetchWatchlist = async () => {
       if (!session) {
         setLoading(false);
         return;
@@ -81,8 +60,125 @@ const Watchlist = () => {
       }
     };
 
+  const getTickerData = async (symbol: string) => {
+    try {
+      const table_name = symbol + '_gen_info';
+      const { data, error } = await supabase
+        .from(table_name)
+        .select('last_close, price_change')
+      return data;
+    } catch (error) {
+      console.error('Error fetching ticker data: ', error);
+    }
+  }
+
+  const addToDatabase = async (ticker: string) => {
+    try {
+      const currUserId = session.user.id;
+      const currSymbol = ticker.slice(ticker.lastIndexOf('(')+1, ticker.lastIndexOf(')'));
+      const tickerData = getTickerData(currSymbol.toLowerCase());
+      const currPrice = (tickerData && (await tickerData)) ? (await tickerData)[0].last_close : null;
+      const currOutlook = (tickerData && (await tickerData)) ? (await tickerData)[0].price_change : null;
+      const { error } = await supabase
+        .from('watchlist')
+        .insert({user_id: currUserId, symbol: currSymbol, current_price: currPrice, price_change: currOutlook});
+      
+      fetchWatchlist();
+    } catch (error) {
+      console.error('Error adding ticker: ', error);
+    }
+  }
+
+    useEffect(() => {
     fetchWatchlist();
   }, [session]);
+
+  const AddTickerModal = ({ onClose }) => {
+    const tickers = [
+        'Apple (AAPL)', 'Google (GOOGL)', 'Amazon (AMZN)', 'Bitcoin (BTC)', 'Tesla (TSLA)',
+        'Microsoft (MSFT)', 'Meta (META)', 'Netflix (NFLX)', 'Nvidia (NVDA)', 'Ethereum (ETH)',
+        'Spotify (SPOT)', 'Disney (DIS)', 'Coca-Cola (KO)', "McDonald's (MCD)", 'Visa (V)',
+        'Johnson & Johnson (JNJ)', 'Walmart (WMT)', 'Intel (INTC)', 'Adobe (ADBE)', 'Salesforce (CRM)'
+        ];
+    const [searchTerm, setSearchTerm] = useState("");
+    const [tickersData] = useState(tickers);
+    const [inputFocus, setInputFocus] = useState(false);
+
+  
+    const handleInputChange = (e) => setSearchTerm(e.target.value);
+
+    const tickersDataFiltered = tickersData.filter((ticker) =>
+        ticker.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+
+    return (<div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+      <div className="bg-black rounded-lg p-8 shadow-lg max-w-md w-full">
+        <h2 className="text-xl font-bold mb-4 text-white">Add a Ticker</h2>
+        <div className="bg-black shadow-lg rounded max-w-md w-full mx-auto z-50 p-2 max-h-48 overflow-y-auto">
+          <input
+             autoFocus
+             className="w-full rounded text-base px-4 py-2 bg-gray-900 text-white border border-gray-700 focus:border-yellow-400 transition-all"
+             type="text"
+             placeholder="Search stocks/crypto"
+             onChange={handleInputChange}
+             onFocus={() => setInputFocus(true)}
+             onBlur={() => setTimeout(() => setInputFocus(false), 150)}
+             value={searchTerm}
+         />
+        {inputFocus && (
+            <div className="bg-black shadow-lg rounded max-w-md w-full mx-auto z-50 p-2 max-h-48 overflow-y-auto">
+                {tickersDataFiltered.length > 0 ? (
+                    tickersDataFiltered.map((ticker) => (
+                        <p key={ticker} className="cursor-pointer hover:bg-yellow-500 px-2 py-1 rounded"
+                            onClick={() => {
+                                setSearchTerm(ticker);
+                                setInputFocus(false);
+                                addToDatabase(ticker);
+                                onClose();
+                            }}>
+                            {ticker}
+                        </p>
+                    ))
+                ) : (
+                    <p className="text-white px-2 py-1">No results</p>
+                )}
+            </div>
+        )}
+        </div>
+        <button
+          className="mt-4 px-4 py-2 rounded bg-cyan-500 text-white"
+          onClick={onClose}
+        >
+          Close
+        </button>
+      </div>
+    </div>);
+  }
+
+  
+
+  const removeFromWatchlist = async (itemId) => {
+    if (!session) return;
+    
+    try {
+      const { error } = await supabase
+        .from('watchlist')
+        .delete()
+        .eq('id', itemId)
+        .eq('user_id', session.user.id);
+        
+      if (error) {
+        console.error('Error removing item:', error);
+      } else {
+        // Update state to remove the item
+        setWatchListItems(watchListItems.filter(item => item.id !== itemId));
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
+
+
 
     const authenticatedContent = (
     <div className="container mx-auto py-8 px-4">
@@ -93,17 +189,42 @@ const Watchlist = () => {
           <div className="animate-pulse text-cyan-400">Loading watchlist...</div>
         </div>
       ) : watchListItems.length > 0 ? (
-      
       <div>
-      {/* Add watchlist design here*/}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {watchListItems.map((item) => (
+            <div key={item.id} className="bg-black bg-opacity-80 rounded-xl p-6 shadow-md flex flex-col justify-between">
+              <div>
+                <h2 className="text-xl font-semibold mb-2 text-white">{item.symbol}</h2>
+                <p className="text-white">Current Price: ${item.current_price ? item.current_price.toFixed(2) : 'N/A'}</p>
+                <p className={`mt-1 ${item.price_change > 0 ? 'text-green-400' : item.price_change < 0 ? 'text-red-400' : 'text-yellow-400'}`}>
+                  Outlook: {item.price_change ? (item.price_change > 0 ? `+${item.price_change.toFixed(2)}` : item.price_change.toFixed(2)) : 'N/A'}
+                </p>
+              </div>
+              <button
+                className="mt-4 px-4 py-2 rounded bg-red-600 text-white hover:bg-red-500 transition-all"
+                onClick={() => removeFromWatchlist(item.id)}
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+        </div>
+        <div className="flex justify-center mt-8">
+          <button className="px-6 py-3 rounded-lg text-sm font-semibold bg-cyan-500 text-black hover:bg-cyan-400 transition-all" onClick={() => setShowAddTicker(true)}>
+            Add Ticker
+          </button>
+        </div>
       </div>
       ) : (
         <div className="bg-black bg-opacity-80 rounded-xl p-8 text-center">
           <p className="text-white mb-4">Your watchlist is empty. Add some stocks or cryptocurrencies to track!</p>
-          <button className="px-6 py-3 rounded-lg text-sm font-semibold bg-cyan-500 text-black hover:bg-cyan-400 transition-all">
+          <button className="px-6 py-3 rounded-lg text-sm font-semibold bg-cyan-500 text-black hover:bg-cyan-400 transition-all" onClick={() => setShowAddTicker(true)}>
             Add Ticker
           </button>
         </div>
+      )}
+      {showAddTicker && (
+        <AddTickerModal onClose={() => setShowAddTicker(false)} />
       )}
     </div>
   );
