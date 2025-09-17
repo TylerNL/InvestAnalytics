@@ -23,7 +23,7 @@ TOP_STOCKS = {"nvda", "aapl", "amzn"}
 def check_if_recent_in_db(current_stock):
     conn = psycopg2.connect(dbname = database, user = user, password = password, host = host, port = port)
     cur = conn.cursor()
-    cur.execute("SELECT to_regclass(%s);", (f"{"public"}.{current_stock}",))
+    cur.execute("SELECT to_regclass(%s);", (f'public.{current_stock}',))
     found = cur.fetchone()[0] is not None
     if found:
         cur.execute(f"SELECT last_update FROM {current_stock}_gen_info")

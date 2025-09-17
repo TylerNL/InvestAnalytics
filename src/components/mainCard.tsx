@@ -3,6 +3,7 @@ import DecryptedText from "./DecryptedText";
 
 function MainCard() {
   const [headerDone, setHeaderDone] = useState(false);
+  
 
   return (
     <>

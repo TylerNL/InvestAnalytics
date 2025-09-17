@@ -1,14 +1,12 @@
 import { useState } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { UserAuth } from "../context/AuthContext";
-
 
 const SignIn = () => {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
-    const [loading, setLoading] = useState("");
-    const navigate = useNavigate();
+    const [loading, setLoading] = useState(false);
 
     const {session, signInUser} = UserAuth() || {};
 
@@ -21,6 +19,7 @@ const SignIn = () => {
     const handleSignUp = async (e) => {
         e.preventDefault();
         setLoading(true);
+        setError("");
         try {
             const result = await signInUser(email, password);
             if(result.success) {
@@ -28,9 +27,9 @@ const SignIn = () => {
             }else{
                 setError(result.error || "Sign in failed");
             }
-        }catch(err){
-            setError("Error: ", err.message);
-        }finally{
+        } catch(err) {
+            setError(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        } finally {
             setLoading(false);
         }
     }
@@ -38,7 +37,7 @@ const SignIn = () => {
     
     return (
         <div>
-            <form onSubmit={handleSignUp} className="max-w-md m-auto pt-24">
+            <form onSubmit={handleSignIn} className="max-w-md m-auto pt-24">
                 <h2 className="font-bold pb-2">Sign in</h2>
                     <p>Don't have an account? <Link to="/signup">Sign Up!</Link></p>
 

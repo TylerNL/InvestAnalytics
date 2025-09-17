@@ -4,6 +4,7 @@ import Watchlist from "./Watchlist";
 import News from "./News";
 import SignIn from "./SignIn";
 import SignUp from "./SignUp";
+import CurrencyDetail from "./CurrencyDetail";
 
 const AppRouter = () => (
   <Routes>
@@ -12,6 +13,7 @@ const AppRouter = () => (
     <Route path="/news" element={<News />} />
     <Route path="/signin" element={<SignIn />} />
     <Route path="/signup" element={<SignUp />} />
+    <Route path="/currencies/:ticker" element={<CurrencyDetail/>} />
   </Routes>
 );
 

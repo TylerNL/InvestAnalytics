@@ -7,7 +7,7 @@ const SignUp = () => {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
-    const [loading, setLoading] = useState("");
+    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
     const {session, signUpNewUser} = UserAuth() || {};
@@ -39,7 +39,7 @@ const SignUp = () => {
     return (
         <div>
             <form onSubmit={handleSignUp} className="max-w-md m-auto pt-24">
-                <h2 className="font-bold pb-2">Sign Up Now!</h2>
+                <h2 className="font-bold pb-2">Sign Up</h2>
                     <p>Already have an account? <Link to="/signin">Sign In!</Link></p>
 
                 <div className="flex flex-col py-4">
