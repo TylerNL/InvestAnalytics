@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { UserAuth } from "../context/AuthContext";
 import DecryptedText from "./DecryptedText";
 
 function MainCard() {
   const [headerDone, setHeaderDone] = useState(false);
+  const {session} = UserAuth() || {};
   
 
   return (
@@ -76,14 +78,16 @@ function MainCard() {
           >
             Leverage our AI for technical analysis, real-time news, and actionable predictions—all in one easy-to-digest platform.
           </p>
-          <div className="flex flex-col md:flex-row lg:justify-start md:justify-center items-center gap-4 mt-8">
+          {!session ? (<div className="flex flex-col md:flex-row lg:justify-start md:justify-center items-center gap-4 mt-8">
             <a
               className="block px-6 py-3 rounded-lg text-sm font-semibold border border-[#00FFFF] text-[#00FFFF] shadow-md transition-all duration-300 hover:bg-[#00FFFF] hover:text-black hover:shadow-[0_0_20px_rgba(0,188,212,0.5)]"
               href="/signup"
             >
               Sign Up Now
             </a>
-          </div>
+          </div>) : <></>}
+          
+
         </div>
       </section>
     </>

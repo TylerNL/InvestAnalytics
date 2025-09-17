@@ -16,7 +16,7 @@ const SignIn = () => {
         )
     }
 
-    const handleSignUp = async (e) => {
+    const handleSignIn = async (e) => {
         e.preventDefault();
         setLoading(true);
         setError("");
