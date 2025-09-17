@@ -95,7 +95,7 @@ def add_to_db(current_stock, stock_info):
 def generate_json_text(current_stock, historical_data, reddit_data, news_data):
     client = OpenAI(api_key=OPENAI_API_KEY)
     response = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="gpt-5-nano-2025-08-07",
         messages=[
             {
                 "role": "system",
