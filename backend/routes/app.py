@@ -21,14 +21,17 @@ database=os.getenv("SUPABASE_DB")
 TOP_STOCKS = {"nvda", "aapl", "amzn"}
 
 def check_if_recent_in_db(current_stock):
+    # Sanitize table name by replacing hyphens with underscores
+    table_name = current_stock.replace('-', '_').lower()
+    
     conn = psycopg2.connect(dbname = database, user = user, password = password, host = host, port = port)
     cur = conn.cursor()
-    cur.execute("SELECT to_regclass(%s);", (f'public.{current_stock}',))
+    cur.execute("SELECT to_regclass(%s);", (f'public.{table_name}',))
     found = cur.fetchone()[0] is not None
     if found:
-        cur.execute(f"SELECT last_update FROM {current_stock}_gen_info")
+        cur.execute(f"SELECT last_update FROM {table_name}_gen_info")
         if datetime.now(timezone.utc) - cur.fetchone()[0].replace(tzinfo=timezone.utc) > timedelta(hours=6):
-            cur.execute(f"DROP TABLE \"{current_stock}\", \"{current_stock}_gen_info\"")
+            cur.execute(f"DROP TABLE \"{table_name}\", \"{table_name}_gen_info\"")
             conn.commit()
             cur.close()
             conn.close()
@@ -39,6 +42,9 @@ def check_if_recent_in_db(current_stock):
 
 def get_prediction_from_database(current_stock):
     try:
+        # Sanitize table name by replacing hyphens with underscores
+        table_name = current_stock.replace('-', '_').lower()
+        
         conn = psycopg2.connect(dbname = database, user = user, password = password, host = host, port = port)
         cur = conn.cursor()
 
@@ -47,14 +53,14 @@ def get_prediction_from_database(current_stock):
         current_information = {}
 
         cur.execute(f"""
-                    SELECT * FROM {current_stock}
+                    SELECT * FROM {table_name}
                     """)
 
         for prediction in cur.fetchall():
             prices_dict[str(prediction[0])] = (prediction[1], prediction[2], prediction[3])
 
         cur.execute(f"""
-                    SELECT * FROM {current_stock}_gen_info
+                    SELECT * FROM {table_name}_gen_info
                     """)
 
         db_gen_info = cur.fetchone()
