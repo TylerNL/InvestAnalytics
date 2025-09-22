@@ -3,6 +3,34 @@ import { useParams, useNavigate } from "react-router-dom";
 import { UserAuth } from "../context/AuthContext";
 import { supabase } from "../context/supabaseClient";
 
+const backgroundSVG = (
+    <svg
+      className="absolute inset-0 w-full h-full pointer-events-none"
+      style={{ zIndex: 1 }}
+      aria-hidden="true"
+    >
+      <defs>
+        <radialGradient id="glow" cx="50%" cy="50%" r="80%" fx="50%" fy="50%">
+          <stop offset="0%" stopColor="#00ffe7" stopOpacity="0.15" />
+          <stop offset="100%" stopColor="#000000" stopOpacity="1" />
+        </radialGradient>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#glow)" />
+      <g stroke="#00ffe7" strokeOpacity="0.3">
+        <circle cx="8%" cy="20%" r="2.5" fill="#00ffe7" fillOpacity="0.6" />
+        <circle cx="92%" cy="80%" r="2.5" fill="#00ffe7" fillOpacity="0.6" />
+        <circle cx="50%" cy="50%" r="3.5" fill="#00ffe7" fillOpacity="0.6" />
+        <circle cx="30%" cy="70%" r="2" fill="#00ffe7" fillOpacity="0.6" />
+        <circle cx="70%" cy="30%" r="2" fill="#00ffe7" fillOpacity="0.6" />
+        <line x1="8%" y1="20%" x2="50%" y2="50%" strokeWidth="1" />
+        <line x1="50%" y1="50%" x2="92%" y2="80%" strokeWidth="1" />
+        <line x1="30%" y1="70%" x2="70%" y2="30%" strokeWidth="1" />
+        <line x1="8%" y1="20%" x2="70%" y2="30%" strokeWidth="1" />
+        <line x1="30%" y1="70%" x2="92%" y2="80%" strokeWidth="1" />
+      </g>
+    </svg>
+);
+
 
 const CurrencyDetail = () => {
     const { ticker } = useParams();
@@ -17,11 +45,17 @@ const CurrencyDetail = () => {
     const [isInWatchlist, setIsInWatchlist] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [priceChange, setPriceChange] = useState({ amount: 0, percentage: 0 });
+    const cryptoCoins = [
+        'BTC', 'ETH', 'XRP', 'HBAR', 'SOL', 'DOGE', 'ADA'
+    ];
 
     useEffect(() => {
         const fetchPrediction = async () => {
             try {
-                const predictionRes = await fetch(`/api/predictions?symbol=${ticker}`);
+                let upperSymbol = ticker?.toUpperCase();
+                if(cryptoCoins.includes(upperSymbol))
+                    upperSymbol += "-USD";
+                const predictionRes = await fetch(`/api/predictions?symbol=${upperSymbol}`);
 
                 if (!predictionRes.ok) {
                     throw new Error(`status: ${predictionRes.status}`);
@@ -35,11 +69,12 @@ const CurrencyDetail = () => {
                 console.log('Outlook type:', typeof predictionData?.info?.outlook);
                 
                 if (session) {
+
                     const { data } = await supabase
                         .from('watchlist')
                         .select('*')
                         .eq('user_id', session.user.id)
-                        .eq('symbol', ticker.toLowerCase());
+                        .eq('symbol', upperSymbol);
                     setIsInWatchlist(data && data.length > 0);
                     console.log("User currently signed in.");
                 }
@@ -54,10 +89,56 @@ const CurrencyDetail = () => {
         fetchPrediction();
     }, [ticker, session]);
 
-    // WebSocket for live price updates
-    
-
     // TradingView Widget Effect
+    useEffect(() => {
+        if (!ticker || loading) return;
+
+
+        const getTradingViewCrypto = (symbol: string) => {
+            const upperSymbol = symbol.toUpperCase();
+            if (cryptoCoins.includes(upperSymbol)) {
+                return `${upperSymbol}USD`;
+            }
+            return upperSymbol;
+        }
+
+        const script = document.createElement('script');
+        script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
+        script.type = 'text/javascript';
+        script.async = true;
+        
+        const widgetConfig = {
+            autosize: true,
+            symbol: `${getTradingViewCrypto(ticker)}`,
+            interval: "D",
+            timezone: "Etc/UTC",
+            theme: "dark",
+            style: "1",
+            locale: "en",
+            enable_publishing: false,
+            backgroundColor: "rgba(19, 23, 34, 1)",
+            gridColor: "rgba(42, 46, 57, 0.5)",
+            hide_top_toolbar: false,
+            hide_legend: false,
+            save_image: false,
+            container_id: "tradingview-widget"
+        };
+
+        script.innerHTML = JSON.stringify(widgetConfig);
+
+        const container = document.getElementById('tradingview-widget');
+        if (container) {
+            container.innerHTML = '';
+            container.appendChild(script);
+        }
+
+        // Cleanup function
+        return () => {
+            if (container) {
+                container.innerHTML = '';
+            }
+        };
+    }, [ticker, loading]);
     
 
     const handleAddToWatchlist = async () => {
@@ -69,12 +150,14 @@ const CurrencyDetail = () => {
         setAddingToWatchlist(true);
         try {
             const currentPrice = livePrice || getCurrentPrice();
-            
+            let upperSymbol = ticker?.toUpperCase();
+            if(cryptoCoins.includes(upperSymbol))
+                upperSymbol += '-USD';
             const { error } = await supabase
                 .from('watchlist')
                 .insert([{
                     user_id: session.user.id,
-                    symbol: ticker.toLowerCase(),
+                    symbol: upperSymbol,
                     current_price: currentPrice,
                     price_change: priceChange.percentage
                 }]);
@@ -91,13 +174,16 @@ const CurrencyDetail = () => {
     const handleRemoveFromWatchlist = async () => {
         if (!session) return;
         
+        let upperSymbol = ticker?.toUpperCase();
+        if(cryptoCoins.includes(upperSymbol))
+            upperSymbol += '-USD';
         setAddingToWatchlist(true);
         try {
             const { error } = await supabase
                 .from('watchlist')
                 .delete()
                 .eq('user_id', session.user.id)
-                .eq('symbol', ticker.toLowerCase());
+                .eq('symbol', upperSymbol);
                 
             if (error) throw error;
             setIsInWatchlist(false);
@@ -145,8 +231,9 @@ const CurrencyDetail = () => {
     const displayPrice = livePrice || latestPrices.close;
 
     return (
-        <div className="min-h-screen bg-black pt-24 p-6 text-white">
-            <div className="max-w-7xl mx-auto">
+        <div className="min-h-screen pt-24 p-6 text-white relative overflow-hidden" style={{ background: '#000000' }}>
+            {backgroundSVG}
+            <div className="max-w-7xl mx-auto relative z-10">
                 {/* Header Section */}
                 <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8">
                     <div className="mb-4 lg:mb-0">

@@ -30,55 +30,57 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 def add_to_db(current_stock, stock_info):
     try:
+        table_name = current_stock.replace('-', '_').lower()
+        
         conn = psycopg2.connect(dbname = SUPA_DB, user = SUPA_USER, password = SUPA_PASS, host = SUPA_HOST, port =  SUPA_PORT)
 
         cur = conn.cursor()
 
         cur.execute(f'''
-                    DROP TABLE IF  EXISTS "{current_stock}", "{current_stock}_gen_info" 
+                    DROP TABLE IF  EXISTS "{table_name}", "{table_name}_gen_info" 
                     ''')
 
         cur.execute(f"""
-                    CREATE TABLE IF NOT EXISTS {current_stock}(
+                    CREATE TABLE IF NOT EXISTS {table_name}(
                     date DATE, high FLOAT, low FLOAT, close FLOAT
                     )
                     """)
         
         cur.execute(f"""
-                    ALTER TABLE {current_stock} ENABLE ROW LEVEL SECURITY;
+                    ALTER TABLE {table_name} ENABLE ROW LEVEL SECURITY;
                     """)
         
         for information in stock_info["forecast"]["predictions"]:
             cur.execute(f"""
-                        INSERT INTO {current_stock} (date, high, low, close)
+                        INSERT INTO {table_name} (date, high, low, close)
                         VALUES (%s, %s, %s, %s)
                         """, (information["date"], information["predicted_high"], information["predicted_low"], information["predicted_close"]))
         
         for information in stock_info["historical"]:
             cur.execute(f"""
-                        INSERT INTO {current_stock} (date, high, low, close)
+                        INSERT INTO {table_name} (date, high, low, close)
                         VALUES (%s, %s, %s, %s)
                         """, (information["date"], information["high"], information["low"], information["close"]))
             
         cur.execute(f"""
-                    CREATE TABLE IF NOT EXISTS {current_stock}_gen_info(
+                    CREATE TABLE IF NOT EXISTS {table_name}_gen_info(
                     last_update TIMESTAMP PRIMARY KEY, last_close FLOAT, outlook TEXT, price_change FLOAT, confidence INT, rationale TEXT
                     )
                     """)
         
         cur.execute(f"""
-                    ALTER TABLE {current_stock}_gen_info ENABLE ROW LEVEL SECURITY;
+                    ALTER TABLE {table_name}_gen_info ENABLE ROW LEVEL SECURITY;
                     """)
         
         cur.execute(f"""
-                    CREATE POLICY "{current_stock}_gen_info_select"
-                    ON {current_stock}_gen_info
+                    CREATE POLICY "{table_name}_gen_info_select"
+                    ON {table_name}_gen_info
                     FOR SELECT
                     USING (true);
                     """)
         
         cur.execute(f"""
-                    INSERT INTO {current_stock}_gen_info (last_update, last_close, outlook, price_change, confidence, rationale)
+                    INSERT INTO {table_name}_gen_info (last_update, last_close, outlook, price_change, confidence, rationale)
                     VALUES (%s, %s, %s, %s, %s, %s)
                     """, (datetime.now(timezone.utc), stock_info["historical"][-1]["close"], stock_info["forecast"]["outlook"], stock_info["forecast"]["predictions"][0]["predicted_close"]-stock_info["historical"][-1]["close"], stock_info["forecast"]["confidence"], stock_info["forecast"]["rationale"]))
 
@@ -232,6 +234,7 @@ def get_info(current_stock: str):
     print("getting historical", flush=True)
     try:
         ticker = yf.Ticker(current_stock)
+        print(ticker)
         current_historical = ticker.history(period="4mo", interval="1wk")
     except Exception as e:
         print(f"Error fetching historical data: {e}", flush=True)
@@ -266,7 +269,8 @@ def get_info(current_stock: str):
         with urllib.request.urlopen(news_url) as response:
             data = json.loads(response.read().decode("utf-8"))
             articles = data["articles"]
-            for i in range(7):
+            max_articles = min(7, len(articles))
+            for i in range(max_articles):
                 news_data += f"Title: {articles[i]['title']} "
                 news_data += f"Description: {articles[i]['description']} "
     except Exception as e:
