@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { UserAuth } from "../context/AuthContext";
 import { supabase } from "../context/supabaseClient";
@@ -44,6 +44,7 @@ const CurrencyDetail = () => {
     const [livePrice, setLivePrice] = useState(null);
     const [isInWatchlist, setIsInWatchlist] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [confidence, setConfidence] = useState(null);
     const [priceChange, setPriceChange] = useState({ amount: 0, percentage: 0 });
     const cryptoCoins = [
         'BTC', 'ETH', 'XRP', 'HBAR', 'SOL', 'DOGE', 'ADA'
@@ -67,7 +68,7 @@ const CurrencyDetail = () => {
                 const tableName = `${ticker.toLowerCase()}_gen_info`;
                 const { data: genInfoData, error: genInfoError } = await supabase
                     .from(tableName)
-                    .select('last_close, price_change, rationale')
+                    .select('last_close, price_change, rationale, confidence')
                     .order('last_update', { ascending: false })
                     .limit(1)
                     .single();
@@ -85,11 +86,20 @@ const CurrencyDetail = () => {
 
                 // fixed multiple re-renders
                 if (genInfoData && !genInfoError) {
+                    const marketOutlookPrice = genInfoData.last_close + genInfoData.price_change;
+                    let calculatedOutlook = 'stable';
+                    if (genInfoData.price_change > 0) {
+                        calculatedOutlook = 'raise';
+                    } else if (genInfoData.price_change < 0) {
+                        calculatedOutlook = 'drop';
+                    }
                     setCurrencyData({
                         ...predictionData,
                         info: {
                             ...predictionData?.info,
-                            reasoning: genInfoData.rationale
+                            reasoning: genInfoData.rationale,
+                            outlook: calculatedOutlook,
+                            predicted_price: marketOutlookPrice
                         }
                     });
                     setLivePrice(genInfoData.last_close);
@@ -97,6 +107,7 @@ const CurrencyDetail = () => {
                         amount: genInfoData.price_change,
                         percentage: genInfoData.price_change
                     });
+                    setConfidence(genInfoData.confidence);
                     console.log("Got info from gen_info");
                 } else {
                     setCurrencyData(predictionData);
@@ -358,23 +369,23 @@ const CurrencyDetail = () => {
                             <div className="space-y-4">
                                 <div className="text-center">
                                     <div className={`text-2xl font-bold mb-2 ${
-                                        String(currencyData?.info?.outlook || '').toLowerCase() === 'raise' ? 'text-green-400' :
-                                        String(currencyData?.info?.outlook || '').toLowerCase() === 'drop' ? 'text-red-400' : 'text-gray-400'
+                                        String(currencyData?.info?.predicted_price || '').toLowerCase() === 'raise' ? 'text-green-400' :
+                                        String(currencyData?.info?.predicted_price || '').toLowerCase() === 'drop' ? 'text-red-400' : 'text-gray-400'
                                     }`}>
-                                        {String(currencyData?.info?.outlook || 'stable').toUpperCase()}
+                                        {String(currencyData?.info?.predicted_price || 'stable').toUpperCase()}
                                     </div>
-                                    <div className="text-gray-400 text-sm">Market Outlook</div>
+                                    <div className="text-gray-400 text-sm">Market Outlook: {currencyData?.info?.outlook}</div>
                                 </div>
                                 
                                 <div className="mb-4">
                                     <div className="flex justify-between items-center mb-2">
                                         <span className="text-sm text-gray-400">Confidence</span>
-                                        <span className="text-sm font-medium">{currencyData?.info?.confidence || 0}%</span>
+                                        <span className="text-sm font-medium">{confidence || 0}%</span>
                                     </div>
                                     <div className="w-full bg-gray-700 rounded-full h-3">
                                         <div 
                                             className="bg-yellow-500 h-3 rounded-full transition-all duration-300" 
-                                            style={{ width: `${currencyData?.info?.confidence || 0}%` }}
+                                            style={{ width: `${confidence || 0}%` }}
                                         ></div>
                                     </div>
                                 </div>
