@@ -3,6 +3,7 @@ import InfiniteTickerScroll from "./InfiniteTickers";
 import predict_img from "../assets/predicpng.png";
 import updates_img from "../assets/updatespng.png";
 import news_img from "../assets/recentnewsspng.png";
+import background_img from "../assets/home_background.png"
 
 function Home() {
   
@@ -32,14 +33,105 @@ function Home() {
           <line x1="30%" y1="70%" x2="70%" y2="30%" />
           <line x1="8%" y1="20%" x2="70%" y2="30%" />
           <line x1="30%" y1="70%" x2="92%" y2="80%" />
+          <line x1="70%" y1="30%" x2="92%" y2="80%" />
+          <line x1="8%" y1="20%" x2="30%" y2="70%" />
         </g>
+        <circle r="4" fill="white">
+          <animate
+            attributeName="cx"
+            values="8%;50%;92%;70%;30%;8%"
+            dur="8s"
+            repeatCount="indefinite"
+          />
+          <animate
+            attributeName="cy"
+            values="20%;50%;80%;30%;70%;20%"
+            dur="8s"
+            repeatCount="indefinite"
+          />
+        </circle>
+
+        <circle r="4" fill="white">
+          <animate
+            attributeName="cx"
+            values="8%;50%;92%;70%;30%;8%"
+            dur="10s"
+            repeatCount="indefinite"
+          />
+          <animate
+            attributeName="cy"
+            values="20%;50%;80%;30%;70%;20%"
+            dur="10s"
+            repeatCount="indefinite"
+          />
+        </circle>
+
       </svg>
       <MainCard />
-      <section className="min-h-[15vh] flex items-center justify-center w-full">
-        <div className="text-white text-2xl"></div>
-      </section>
-      <section className="min-h-screen flex items-center justify-center">
-        <div className="w-full bg-black py-6 flex flex-col items-center justify-start">
+      <div>
+        
+      </div>
+      <div
+      className="w-screen h-[90vh] bg-cover bg-center mt-[20vh]"
+      style={{ backgroundImage: `url(${background_img})`}}
+      >
+        <div className="flex h-full
+        items-start justify-center 
+        2xl:items-center 2xl:justify-end 2xl: mr-[10vh]
+        p-8">
+        <div>
+          <h1 className="text-white text-4xl max-w-lg mb-5">
+            A breakthrough in AI prediction technology allowing for future outlooks for the markets that interest you
+          </h1>
+          <p className="max-w-md">We have developed an innovative method of analyzing news, market histories, and popular sentiment to determine how prices can change in the future. </p>
+        </div>
+      </div>
+    </div>
+
+      <div className="w-full bg-black py-6 flex flex-col items-center justify-center">
+          <p className="text-white text-2xl mb-4 smooth-element">Stay Up to Date With The Hottest Companies</p>
+          <InfiniteTickerScroll />
+      </div>
+
+    <section className="h-[90vh] flex items-center justify-center bg-gradient-to-br from-[#0f2a2f] to-[#2f4d3b] px-8 py-24">
+      <div className="max-w-6xl w-full">
+        <h2 className="text-5xl font-bold text-white mb-16 text-center">
+          How do we predict?
+        </h2>
+        <div className="grid gap-12 md:grid-cols-3">
+          <div className="bg-white rounded-3xl shadow-xl p-10 hover:shadow-2xl transition">
+            <h3 className="text-2xl font-semibold text-gray-800 mb-6">Recent News</h3>
+            <p className="text-gray-600 text-lg leading-relaxed">
+              Through deep searching, Invest Analytics analyzes recent news from
+              around the world relating to the stock or cryptocurrency in question
+              and evaluates how it could change its price in the near future.
+            </p>
+          </div>
+
+          <div className="bg-white rounded-3xl shadow-xl p-10 hover:shadow-2xl transition">
+            <h3 className="text-2xl font-semibold text-gray-800 mb-6">Social Media</h3>
+            <p className="text-gray-600 text-lg leading-relaxed">
+              In this day and age, the world's fastest method of spreading
+              information is social media. Using our methods of deep searching, we
+              analyze posts for public sentiment and understand how it can guide
+              the best decisions possible.
+            </p>
+          </div>
+
+          <div className="bg-white rounded-3xl shadow-xl p-10 hover:shadow-2xl transition">
+            <h3 className="text-2xl font-semibold text-gray-800 mb-6">Past Prices</h3>
+            <p className="text-gray-600 text-lg leading-relaxed">
+              Some of the best information about the future can be found in the
+              past. Our AI model uses historical market prices for each stock and
+              cryptocurrency to create the most accurate predictions possible.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+      <section className="flex items-center justify-center">
+        <div className="w-full bg-black py-10 flex flex-col items-center justify-start">
           <h2 className="pl-4 text-3xl font-bold text-white py-3 mb-4">What Do We Offer?</h2>
           <div className="grid md:grid-cols-3 gap-8">
 
@@ -74,12 +166,10 @@ function Home() {
           </div>
       </section>
 
-        <div className="w-full bg-black py-6 flex flex-col items-center justify-center">
-          <p className="text-white text-2xl mb-4 smooth-element">Stay Up to Date With The Hottest Companies</p>
-          <InfiniteTickerScroll />
-        </div>
+      <section className="min-h-screen flex items-center justify-center"> </section>
 
-      <section className="min-h-screen flex items-center justify-center"/>
+        
+      
     </>
   );
 }
