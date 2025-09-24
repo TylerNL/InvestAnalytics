@@ -200,7 +200,7 @@ const Watchlist = () => {
                 className="mt-4 px-4 py-2 rounded bg-red-600 text-white hover:bg-red-500 transition-all"
                 onClick={() => removeFromWatchlist(item.id)}
                 >
-                <img src={trash} alt="Remove" className="w-5 h-5" />
+                <img src={trash} alt="Remove" className="w-6 h-7" />
                 </button>
               </div>
               <p className="text-white">Current Price: ${item.current_price ? item.current_price.toFixed(2) : 'N/A'}</p>
@@ -229,7 +229,7 @@ const Watchlist = () => {
             {/* Top row: symbol + button silhouette */}
               <div className="flex justify-between items-center mb-4">
                 <div className="h-6 w-24 bg-gray-600 rounded"></div>
-                <div className="h-8 w-12 bg-gray-600 rounded-md"></div>
+                <div className="h-10 w-14 bg-gray-600 rounded-md"></div>
               </div>
             {/* Price + outlook placeholders */}
             <div>

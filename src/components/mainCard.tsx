@@ -9,7 +9,7 @@ function MainCard() {
 
   return (
     <>
-      <section className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-transparent">
+      <section className="relative  h-[80vh] w-full flex items-center justify-center overflow-hidden bg-transparent">
         <div
           className="relative z-10 w-full flex flex-col items-center text-center pb-16 md:pb-32 lg:items-start lg:text-left lg:w-1/2 lg:pb-0"
           style={{
@@ -17,7 +17,7 @@ function MainCard() {
           }}
         >
           <h1
-            className="text-5xl lg:text-6xl font-extrabold mb-2 smooth-element"
+            className="text-5xl lg:text-6xl font-extrabold mb-2 smooth-element mt-20"
             style={{
               textShadow: "rgba(255,255,255,0.2) 0px 0px 20px",
               willChange: "transform, opacity",
