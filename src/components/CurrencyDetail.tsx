@@ -39,7 +39,7 @@ const CurrencyDetail = () => {
     const polygonAPI = import.meta.env.VITE_POLYGON_API_KEY;
 
     const [loading, setLoading] = useState(true);
-    const [addingToWatchList, setAddingToWatchlist] = useState(false);
+    const [addingToWatchlist, setAddingToWatchlist] = useState(false);
     const [currencyData, setCurrencyData] = useState(null);
     const [livePrice, setLivePrice] = useState(null);
     const [isInWatchlist, setIsInWatchlist] = useState(false);
@@ -62,22 +62,58 @@ const CurrencyDetail = () => {
                 }
 
                 const predictionData = await predictionRes.json();
-                setCurrencyData(predictionData);
                 
-                console.log('Full API response:', predictionData);
-                console.log('Outlook value:', predictionData?.info?.outlook);
-                console.log('Outlook type:', typeof predictionData?.info?.outlook);
-                
-                if (session) {
+                // Fetch data from the ticker-specific gen_info table
+                const tableName = `${ticker.toLowerCase()}_gen_info`;
+                const { data: genInfoData, error: genInfoError } = await supabase
+                    .from(tableName)
+                    .select('last_close, price_change, rationale')
+                    .order('last_update', { ascending: false })
+                    .limit(1)
+                    .single();
 
+                let watchlistData = null;
+                if (session) {
                     const { data } = await supabase
                         .from('watchlist')
                         .select('*')
                         .eq('user_id', session.user.id)
                         .eq('symbol', upperSymbol);
-                    setIsInWatchlist(data && data.length > 0);
+                    watchlistData = data;
                     console.log("User currently signed in.");
                 }
+
+                // fixed multiple re-renders
+                if (genInfoData && !genInfoError) {
+                    setCurrencyData({
+                        ...predictionData,
+                        info: {
+                            ...predictionData?.info,
+                            reasoning: genInfoData.rationale
+                        }
+                    });
+                    setLivePrice(genInfoData.last_close);
+                    setPriceChange({
+                        amount: genInfoData.price_change,
+                        percentage: genInfoData.price_change
+                    });
+                    console.log("Got info from gen_info");
+                } else {
+                    setCurrencyData(predictionData);
+                    if (genInfoError) {
+                        console.error('Error fetching gen_info data:', genInfoError);
+                        if (genInfoError.message?.includes('relation') && genInfoError.message?.includes('does not exist')) {
+                            console.log(`Table ${tableName} does not exist yet`);
+                        }
+                    }
+                }
+
+                setIsInWatchlist(watchlistData && watchlistData.length > 0);
+                
+                console.log('Full API response:', predictionData);
+                console.log('Outlook value:', predictionData?.info?.outlook);
+                console.log('Outlook type:', typeof predictionData?.info?.outlook);
+                
                 setLoading(false);
             } catch (err) {
                 console.error("Error fetching data: ", err);
@@ -87,52 +123,52 @@ const CurrencyDetail = () => {
         };
 
         fetchPrediction();
-    }, [ticker, session]);
+    }, [ticker, session?.user?.id]);
 
     // TradingView Widget Effect
     useEffect(() => {
         if (!ticker || loading) return;
 
-
-        const getTradingViewCrypto = (symbol: string) => {
+        const getTradingViewSymbol = (symbol: string) => {
             const upperSymbol = symbol.toUpperCase();
             if (cryptoCoins.includes(upperSymbol)) {
-                return `${upperSymbol}USD`;
+                return `BINANCE:${upperSymbol}USD`;
             }
-            return upperSymbol;
+            return `NASDAQ:${upperSymbol}`;
+        };
+
+        // Clear existing widget
+        const container = document.getElementById('tradingview-widget');
+        if (container) {
+            container.innerHTML = '';
         }
 
+        // Create and configure the script
         const script = document.createElement('script');
         script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
         script.type = 'text/javascript';
         script.async = true;
-        
-        const widgetConfig = {
-            autosize: true,
-            symbol: `${getTradingViewCrypto(ticker)}`,
-            interval: "D",
-            timezone: "Etc/UTC",
-            theme: "dark",
-            style: "1",
-            locale: "en",
-            enable_publishing: false,
-            backgroundColor: "rgba(19, 23, 34, 1)",
-            gridColor: "rgba(42, 46, 57, 0.5)",
-            hide_top_toolbar: false,
-            hide_legend: false,
-            save_image: false,
-            container_id: "tradingview-widget"
-        };
+        script.innerHTML = JSON.stringify({
+            "autosize": true,
+            "symbol": getTradingViewSymbol(ticker),
+            "interval": "D",
+            "timezone": "Etc/UTC",
+            "theme": "dark",
+            "style": "1",
+            "locale": "en",
+            "enable_publishing": false,
+            "backgroundColor": "rgba(19, 23, 34, 1)",
+            "gridColor": "rgba(42, 46, 57, 0.5)",
+            "hide_top_toolbar": false,
+            "hide_legend": false,
+            "save_image": false,
+            "container_id": "tradingview-widget"
+        });
 
-        script.innerHTML = JSON.stringify(widgetConfig);
-
-        const container = document.getElementById('tradingview-widget');
         if (container) {
-            container.innerHTML = '';
             container.appendChild(script);
         }
 
-        // Cleanup function
         return () => {
             if (container) {
                 container.innerHTML = '';
@@ -202,12 +238,22 @@ const CurrencyDetail = () => {
 
     const getLatestPrices = () => {
         if (!currencyData?.prices) return { high: 0, low: 0, close: 0 };
-        const latestDate = Object.keys(currencyData.prices).sort().pop();
-        const prices = currencyData.prices[latestDate];
+
+        const currentDate = new Date();
+        currentDate.setHours(0,0,0,0);
+
+        const historicalEntries = Object.entries(currencyData.prices)
+            .filter(([date]) => new Date(date) <= currentDate)
+            .sort( ([a], [b]) => new Date(b).getTime() - new Date(a).getTime());
+        
+        if(historicalEntries.length === 0)
+            return {high: 0, low: 0, close: 0};
+
+        const [latestDate, prices] = historicalEntries[0];
         return {
-            high: prices?.[1] || 0,
-            low: prices?.[2] || 0,
-            close: prices?.[0] || 0
+            high: prices?.[0] || 0,  // High price
+            low: prices?.[1] || 0,   // Low price  
+            close: prices?.[2] || 0  // Close price
         };
     };
 
@@ -247,38 +293,24 @@ const CurrencyDetail = () => {
                                     {priceChange.amount >= 0 ? '▲' : '▼'}
                                 </span>
                                 <span className="text-lg font-medium">
-                                    ${Math.abs(priceChange.amount).toFixed(2)} ({Math.abs(priceChange.percentage).toFixed(2)}%)
+                                    {Math.abs(priceChange.percentage).toFixed(2)}%
                                 </span>
                             </div>
                         </div>
                     </div>
                     
                     {/* Watchlist Button */}
-                    {isInWatchlist ? (
-                        <button
-                            onClick={handleRemoveFromWatchlist}
-                            disabled={addingToWatchList}
-                            className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-                        >
-                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                            </svg>
-                            <span>{addingToWatchList ? 'Removing...' : 'Remove from Watchlist'}</span>
-                        </button>
-                    ) : (
-                        <button
-                            onClick={handleAddToWatchlist}
-                            disabled={addingToWatchList}
-                            className="px-6 py-3 bg-yellow-500 hover:bg-yellow-600 text-black font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-                        >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                            </svg>
-                            <span>
-                                {addingToWatchList ? 'Adding...' : session ? 'Add to Watchlist' : 'Sign Up to Track'}
-                            </span>
-                        </button>
-                    )}
+                    <button
+                        onClick={isInWatchlist ? handleRemoveFromWatchlist : handleAddToWatchlist}
+                        disabled={addingToWatchlist}
+                        className={`px-6 py-3 rounded-lg font-medium transition-all ${
+                            isInWatchlist 
+                                ? 'bg-red-600 hover:bg-red-700 text-white' 
+                                : 'bg-yellow-500 hover:bg-yellow-600 text-black'
+                        } disabled:opacity-50`}
+                    >
+                        {addingToWatchlist ? 'Loading...' : (isInWatchlist ? 'Remove from Watchlist' : 'Add to Watchlist')}
+                    </button>
                 </div>
 
                 {/* Main Content Grid */}
