@@ -11,6 +11,7 @@
 }
 * {
   scrollbar-width: none;
+  scroll-behavior: smooth;
 }
 
 :root {
@@ -20,7 +21,7 @@
 
   color-scheme: light dark;
   color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  background-color: #0a0a0a;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -28,26 +29,72 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Custom animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Smooth element base styles */
+.smooth-element {
+  transition: all 0.3s ease-out;
+}
+
+/* Glass effect utility */
+.glass {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* Custom gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #00ffe7, #ffd700);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
 a {
   font-weight: 500;
-  color: #646cff;
+  color: #00ffe7;
   text-decoration: inherit;
+  transition: color 0.3s ease;
 }
 a:hover {
-  color: #535bf2;
+  color: #ffd700;
 }
-
-
 
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
-    background-color: #ffffff;
+    background-color: #0a0a0a;
   }
   a:hover {
-    color: #747bff;
+    color: #ffd700;
   }
   button {
-    background-color: #f9f9f9;
+    background-color: #1a1a1a;
   }
 }
