@@ -35,58 +35,145 @@ const Watchlist = () => {
   const {session} = UserAuth() || {};
   const [watchListItems, setWatchListItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [addLoading, setAddLoading] = useState(false);
   const [showAddTicker, setShowAddTicker] = useState(false);
+  const [loadingText, setLoadingText] = useState("Fetching watchlist...");
+  const [addLoadingText, setAddLoadingText] = useState("Getting historical information...");
+
+  // Array of loading messages
+  const addingMessages = [
+    "Getting historical information...",
+    "Getting social media sentiment...",
+    "Getting recent news data...",
+    "Analyzing..."
+  ];
+
+  // Effect to cycle through loading messages
+  useEffect(() => {
+    if (!addLoading) return;
+
+    let messageIndex = 0;
+    setAddLoadingText(addingMessages[0]);
+    const interval = setInterval(() => {
+      if(messageIndex < addingMessages.length-1){
+        messageIndex++;
+      }
+      setAddLoadingText(addingMessages[messageIndex]);
+    }, 8000);
+
+    return () => clearInterval(interval);
+  }, [addLoading]);
 
   const fetchWatchlist = async () => {
-      if (!session) {
+    if (!session) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setLoadingText("Fetching watchlist...");
+
+    try {
+      // First, get the watchlist items from Supabase
+      const { data: watchlistData, error: watchlistError } = await supabase
+        .from('watchlist')
+        .select('*')
+        .eq('user_id', session.user.id);
+
+      if (watchlistError) {
+        console.error('Error fetching watchlist:', watchlistError);
         setLoading(false);
         return;
       }
 
-      try {
-        const { data, error } = await supabase
-          .from('watchlist')
-          .select('*')
-          .eq('user_id', session.user.id);
-
-        if (error) {
-          console.error('Error fetching watchlist:', error);
-        } else {
-          setWatchListItems(data || []);
-        }
-      } catch (error) {
-        console.error('Error:', error);
-      } finally {
+      if (!watchlistData || watchlistData.length === 0) {
+        setWatchListItems([]);
         setLoading(false);
+        return;
       }
-    };
 
-  const getTickerData = async (symbol: string) => {
-    try {
-      const table_name = symbol + '_gen_info';
-      const { data, error } = await supabase
-        .from(table_name)
-        .select('last_close, price_change')
-      return data;
+      // For each ticker in the watchlist, fetch prediction data
+      const enrichedItems = await Promise.all(
+        watchlistData.map(async (item) => {
+          try {
+            // Make API call to get prediction data
+            const response = await fetch(`/api/predictions?symbol=${item.symbol.toUpperCase()}`);
+            
+            if (!response.ok) {
+              console.error(`API call failed for ${item.symbol}: ${response.status}`);
+              return {
+                ...item,
+                current_price: 0,
+                price_change: 0,
+                apiData: null
+              };
+            }
+
+            const apiData = await response.json();
+            console.log(`API data for ${item.symbol}:`, apiData);
+
+            // Extract current price and price change from API response
+            // Adjust these based on your API response structure
+            const currentPrice = apiData.info.outlook || 0;
+            const priceChange = apiData.info.reasoning || 0;
+
+            return {
+              ...item,
+              current_price: currentPrice,
+              price_change: priceChange,
+              apiData: apiData
+            };
+          } catch (error) {
+            console.error(`Error fetching data for ${item.symbol}:`, error);
+            return {
+              ...item,
+              current_price: 0,
+              price_change: 0,
+              apiData: null
+            };
+          }
+        })
+      );
+
+      setWatchListItems(enrichedItems);
+      console.log('Final enriched watchlist items:', enrichedItems);
+
     } catch (error) {
-      console.error('Error fetching ticker data: ', error);
+      console.error('Error:', error);
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
   const addToDatabase = async (ticker: string) => {
     try {
       const currUserId = session.user.id;
       const currSymbol = ticker.slice(ticker.lastIndexOf('(')+1, ticker.lastIndexOf(')'));
-      const tickerData = getTickerData(currSymbol.toLowerCase());
-      const currPrice = (tickerData && (await tickerData)) ? (await tickerData)[0].last_close : null;
-      const currOutlook = (tickerData && (await tickerData)) ? (await tickerData)[0].price_change : null;
+      
+      // Add to watchlist without price data initially
+      setAddLoading(true);
+      setAddLoadingText("Getting historical information...");
       const { error } = await supabase
         .from('watchlist')
-        .insert({user_id: currUserId, symbol: currSymbol, current_price: currPrice, price_change: currOutlook});
+        .insert({
+          user_id: currUserId, 
+          symbol: currSymbol, 
+          current_price: 0, // Will be updated when fetchWatchlist runs
+          price_change: 0
+        });
       
-      fetchWatchlist();
+      if (error) {
+        console.error('Error adding ticker:', error);
+        setAddLoading(false);
+        return;
+      }
+
+      // Refresh the watchlist to get updated data
+      await fetchWatchlist();
     } catch (error) {
       console.error('Error adding ticker: ', error);
+    }finally{
+      setAddLoading(false);
     }
   }
 
@@ -182,14 +269,35 @@ const Watchlist = () => {
 
 
     const authenticatedContent = (
-    <div className="container mx-auto py-8 px-4">
-      <h1 className="text-3xl font-bold mb-6 mt-20 text-white">Your Watchlist</h1>
-      
-      {loading ? (
-        <div className="flex justify-center">
-          <div className="animate-pulse text-cyan-400">Loading watchlist...</div>
+  <div className="container mx-auto py-8 px-4">
+    <h1 className="text-3xl font-bold mb-6 mt-20 text-white">Your Watchlist</h1>
+    
+    {/* Show adding ticker loading overlay (takes priority) */}
+    {addLoading && (
+      <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+        <div className="bg-gray-900 rounded-xl p-8 shadow-lg">
+          <div className="flex flex-col items-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400 mb-4"></div>
+            <div className="text-cyan-400 text-lg font-medium animate-pulse">
+              {addLoadingText}
+            </div>
+            <div className="text-gray-400 text-sm mt-2">
+              Adding ticker to your watchlist...
+            </div>
+          </div>
         </div>
-      ) : watchListItems.length > 0 ? (
+      </div>
+    )}
+    
+    {/* Only show regular loading when NOT adding a ticker */}
+    {loading && !addLoading ? (
+      <div className="flex flex-col items-center justify-center min-h-[200px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400 mb-4"></div>
+        <div className="text-cyan-400 text-lg font-medium animate-pulse">
+          {loadingText}
+        </div>
+      </div>
+    ) : watchListItems.length > 0 ? (
       <div className="bg-black bg-opacity-100 rounded-2xl p-8 shadow-lg">
         <div className="grid grid-cols-1 gap-y-10 max-w-10xl mx-auto">
           {watchListItems.map((item) => (
@@ -197,17 +305,16 @@ const Watchlist = () => {
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-semibold mb-2 text-white">{item.symbol}</h2>
                 <button
-                className="mt-4 px-4 py-2 rounded bg-red-600 text-white hover:bg-red-500 transition-all"
-                onClick={() => removeFromWatchlist(item.id)}
+                  className="mt-4 px-4 py-2 rounded bg-red-600 text-white hover:bg-red-500 transition-all"
+                  onClick={() => removeFromWatchlist(item.id)}
                 >
-                <img src={trash} alt="Remove" className="w-6 h-7" />
+                  <img src={trash} alt="Remove" className="w-6 h-7" />
                 </button>
               </div>
               <p className="text-white">Current Price: ${item.current_price ? item.current_price.toFixed(2) : 'N/A'}</p>
-                <p className={`mt-1 ${item.price_change > 0 ? 'text-green-400' : item.price_change < 0 ? 'text-red-400' : 'text-yellow-400'}`}>
-                  Outlook: {item.price_change ? (item.price_change > 0 ? `+${item.price_change.toFixed(2)}` : item.price_change.toFixed(2)) : 'N/A'}
-                </p>
-              
+              <p className={`mt-1 ${item.price_change > 0 ? 'text-green-400' : item.price_change < 0 ? 'text-red-400' : 'text-yellow-400'}`}>
+                Outlook: {item.price_change ? (item.price_change > 0 ? `+${item.price_change.toFixed(2)}` : item.price_change.toFixed(2)) : 'N/A'}
+              </p>
             </div>
           ))}
         </div>
@@ -217,46 +324,46 @@ const Watchlist = () => {
           </button>
         </div>
       </div>
-      ) : (
-        <div className="bg-black bg-opacity-100 rounded-xl p-8">
-          <div className="grid grid-cols-1 gap-6">
-            {[0, 1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="rounded-xl p-6 shadow-md bg-gray-1000"
-              style={{ opacity: 0.8 - i * 0.25 }} // 1, 0.75, 0.5, 0.25
-            >
-            {/* Top row: symbol + button silhouette */}
-              <div className="flex justify-between items-center mb-4">
-                <div className="h-6 w-24 bg-gray-600 rounded"></div>
-                <div className="h-10 w-14 bg-gray-600 rounded-md"></div>
-              </div>
-            {/* Price + outlook placeholders */}
+    ) : (
+      <div className="bg-black bg-opacity-100 rounded-xl p-8">
+        <div className="grid grid-cols-1 gap-6">
+          {[0, 1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className="rounded-xl p-6 shadow-md bg-gray-1000"
+            style={{ opacity: 0.8 - i * 0.25 }}
+          >
+            <div className="flex justify-between items-center mb-4">
+              <div className="h-6 w-24 bg-gray-600 rounded"></div>
+              <div className="h-10 w-14 bg-gray-600 rounded-md"></div>
+            </div>
             <div>
               <div className="h-4 w-32 bg-gray-600 rounded mb-2"></div>
               <div className="h-4 w-20 bg-gray-600 rounded"></div>
             </div>
-            </div>
-              ))}
-            </div>
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6">
-            <p className="text-white mb-4">
-              Your watchlist is empty. Add some stocks or cryptocurrencies to track!
-            </p>
-            <button
-              className="px-6 py-3 rounded-lg text-sm font-semibold bg-cyan-500 text-black hover:bg-cyan-400 transition-all"
-              onClick={() => setShowAddTicker(true)}
-            >
-              Add Ticker
-            </button>
           </div>
+            ))}
+          </div>
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6">
+          <p className="text-white mb-4">
+            Your watchlist is empty. Add some stocks or cryptocurrencies to track!
+          </p>
+          <button
+            className="px-6 py-3 rounded-lg text-sm font-semibold bg-cyan-500 text-black hover:bg-cyan-400 transition-all"
+            onClick={() => setShowAddTicker(true)}
+          >
+            Add Ticker
+          </button>
         </div>
-      )}
-      {showAddTicker && (
-        <AddTickerModal onClose={() => setShowAddTicker(false)} />
-      )}
-    </div>
-  );
+      </div>
+    )}
+    
+    {/* Only show modal when not adding a ticker */}
+    {showAddTicker && !addLoading && (
+      <AddTickerModal onClose={() => setShowAddTicker(false)} />
+    )}
+  </div>
+);
 
   const unauthenticatedContent = (
         <div className="flex items-center justify-center min-h-screen">

@@ -4,8 +4,11 @@ import predict_img from "../assets/predicpng.png";
 import updates_img from "../assets/updatespng.png";
 import news_img from "../assets/recentnewsspng.png";
 import background_img from "../assets/home_background.png"
+import { UserAuth } from "../context/AuthContext";
+
 
 function Home() {
+  const {session} = UserAuth() || {};
   
   return (
     <>
@@ -17,9 +20,7 @@ function Home() {
       >
         <defs>
           <radialGradient id="glow" cx="50%" cy="50%" r="80%" fx="50%" fy="50%">
-            <stop offset="0%" stopColor="#00ffe7" stopOpacity="0.12" />
-            <stop offset="50%" stopColor="#1a1a2e" stopOpacity="0.8" />
-            <stop offset="100%" stopColor="#0f0f1a" stopOpacity="0.95" />
+            <stop offset="0%" stopColor="#00ffe7" stopOpacity="0.25" />
           </radialGradient>
           <filter id="blur">
             <feGaussianBlur stdDeviation="1.5"/>
@@ -29,7 +30,7 @@ function Home() {
         <g stroke="#00ffe7" strokeOpacity="0.15" filter="url(#blur)">
           <circle cx="8%" cy="20%" r="2.5" fill="#00ffe7" fillOpacity="0.6" />
           <circle cx="92%" cy="80%" r="2.5" fill="#00ffe7" fillOpacity="0.6" />
-          <circle cx="50%" cy="50%" r="3.5" fill="#00ffe7" fillOpacity="0.8" />
+          <circle cx="50%" cy="50%" r="3.5" fill="#00ffe7" fillOpacity="0.5" />
           <circle cx="30%" cy="70%" r="2" fill="#00ffe7" fillOpacity="0.5" />
           <circle cx="70%" cy="30%" r="2" fill="#00ffe7" fillOpacity="0.5" />
           <line x1="8%" y1="20%" x2="50%" y2="50%" strokeWidth="1.5" />
@@ -94,14 +95,13 @@ function Home() {
               <p className="text-lg text-gray-300 leading-relaxed max-w-2xl">
                 We have developed an innovative method of analyzing news, market histories, and popular sentiment to determine how prices can change in the future. Get future outlooks for the markets that interest you most.
               </p>
-              <div className="flex gap-4">
-                <button className="px-8 py-4 bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-primary-500/25 transition-all duration-300 transform hover:scale-105">
-                  Learn More
-                </button>
+              {!session ? (
+                <div className="flex gap-4">
                 <button className="px-8 py-4 border-2 border-accent-400 text-accent-400 font-semibold rounded-xl hover:bg-accent-400 hover:text-black transition-all duration-300">
                   Get Started
                 </button>
               </div>
+              ) : (<></>)}
             </div>
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-primary-500/20 to-accent-500/20 rounded-3xl blur-xl"></div>
@@ -142,7 +142,7 @@ function Home() {
       </section>
 
       {/* Company Ticker Section */}
-      <section className="relative py-20 bg-gradient-to-r from-black via-gray-900 to-black">
+      <section className="relative py-20 bg-gradient-to-r from-black to-black">
         <div className="max-w-7xl mx-auto px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl lg:text-4xl font-bold text-white mb-4">
