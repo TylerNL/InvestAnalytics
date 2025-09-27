@@ -28,7 +28,7 @@ GNEWS_API = os.getenv("GNEWS_API_KEY")
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-def add_to_db(current_stock, stock_info):
+def add_to_db(current_stock, stock_info, market_cap):
     try:
         table_name = current_stock.replace('-', '_').lower()
         
@@ -64,7 +64,7 @@ def add_to_db(current_stock, stock_info):
             
         cur.execute(f"""
                     CREATE TABLE IF NOT EXISTS {table_name}_gen_info(
-                    last_update TIMESTAMP PRIMARY KEY, last_close FLOAT, outlook TEXT, price_change FLOAT, confidence INT, rationale TEXT
+                    last_update TIMESTAMP PRIMARY KEY, last_close FLOAT, outlook TEXT, price_change FLOAT, confidence INT, rationale TEXT, market_cap FLOAT
                     )
                     """)
         
@@ -80,9 +80,9 @@ def add_to_db(current_stock, stock_info):
                     """)
         
         cur.execute(f"""
-                    INSERT INTO {table_name}_gen_info (last_update, last_close, outlook, price_change, confidence, rationale)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                    """, (datetime.now(timezone.utc), stock_info["historical"][-1]["close"], stock_info["forecast"]["outlook"], stock_info["forecast"]["predictions"][0]["predicted_close"]-stock_info["historical"][-1]["close"], stock_info["forecast"]["confidence"], stock_info["forecast"]["rationale"]))
+                    INSERT INTO {table_name}_gen_info (last_update, last_close, outlook, price_change, confidence, rationale, market_cap)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """, (datetime.now(timezone.utc), stock_info["historical"][-1]["close"], stock_info["forecast"]["outlook"], stock_info["forecast"]["predictions"][0]["predicted_close"]-stock_info["historical"][-1]["close"], stock_info["forecast"]["confidence"], stock_info["forecast"]["rationale"], market_cap))
 
 
         conn.commit()
@@ -236,6 +236,7 @@ def get_info(current_stock: str):
         ticker = yf.Ticker(current_stock)
         print(ticker)
         current_historical = ticker.history(period="4mo", interval="1wk")
+        market_cap = ticker.info["marketCap"]
     except Exception as e:
         print(f"Error fetching historical data: {e}", flush=True)
         current_historical = None
@@ -277,7 +278,7 @@ def get_info(current_stock: str):
         print(f"Error fetching news data: {e}", flush=True)
         news_data = ""
 
-    return current_historical, reddit_data, news_data
+    return current_historical, reddit_data, news_data, market_cap
 
 
 
@@ -285,12 +286,12 @@ def server_run():
     popular_stocks = ["googl", "amzn", "aapl", "nvda", "tsla"]
     for current_stock in popular_stocks:
         print("working on", current_stock, flush=True)
-        historical_data, reddit_data, news_data = get_info(current_stock)
+        historical_data, reddit_data, news_data, market_cap = get_info(current_stock)
         print("inputting into OpenAI", flush=True)
         json_text = generate_json_text(current_stock, historical_data, reddit_data, news_data)
         print("importing into database", flush=True)
         current_information = json.loads(json_text)
-        add_to_db(current_stock, current_information)
+        add_to_db(current_stock, current_information, market_cap)
         print("waiting on timer...", flush=True)
         if current_stock != popular_stocks[-1]:
             time.sleep(180)
