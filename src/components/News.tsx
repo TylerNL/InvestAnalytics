@@ -272,7 +272,17 @@ const News = () => {
             <div className="mt-4 inline-flex items-center space-x-2 bg-primary-500/10 border border-primary-500/20 rounded-full px-4 py-2">
               <div className="w-2 h-2 bg-primary-400 rounded-full animate-pulse"></div>
               <span className="text-sm text-primary-300">
-                Showing news for {watchlistItems.length} watchlist item{watchlistItems.length > 1 ? 's' : ''}
+                Showing news for {watchlistItems.length} watchlist item{watchlistItems.length > 1 ? 's' : ''}: {watchlistItems.slice(0, 5).map(item => item.symbol).join(', ')}{watchlistItems.length > 5 ? '...' : ''}
+              </span>
+            </div>
+          )}
+          
+          {/* Default tickers indicator for non-authenticated users */}
+          {!session?.user && (
+            <div className="mt-4 inline-flex items-center space-x-2 bg-gray-500/10 border border-gray-500/20 rounded-full px-4 py-2">
+              <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+              <span className="text-sm text-gray-400">
+                Showing general market news (AAPL, BTC)
               </span>
             </div>
           )}
