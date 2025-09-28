@@ -86,10 +86,10 @@ def predictions():
         current_stock = request.args.get("symbol").lower()
         if current_stock not in TOP_STOCKS:
             if check_if_recent_in_db(current_stock) is False:
-                historical_data, reddit_data, news_data = get_info(current_stock)
+                historical_data, reddit_data, news_data, market_cap = get_info(current_stock)
                 json_text = generate_json_text(current_stock, historical_data, reddit_data, news_data)
                 current_information = json.loads(json_text)
-                add_to_db(current_stock, current_information)
+                add_to_db(current_stock, current_information, market_cap)
         return get_prediction_from_database(current_stock)
     except Exception as e:
         print(f"Error in prediction: {e}")
