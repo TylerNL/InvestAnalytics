@@ -1,19 +1,20 @@
 # **InvestAnalytics**
 
-# **How to get started**
- - Add your ALPHA_VANTAGE_API_KEY via -> export ALPHA_VANTAGE_API_KEY=YOUR_API_KEY OR use set ALPHA_VANTAGE_API_KEY=YOUR_API_KEY
- - Now start the backend server by doing python news_api.py
- - Now we can start the front end by navigating to the webapp folder and doing "**npm run dev**".
- - Now you should be set.
+## Preqreqs for contribution
+- Node.js (v18 or higher)
+- npm or yarn
+- Supabase
 
-# **Watchlist Details**
- - Articles currently cached every 24 hours in cached_articles json file.
- - News grabs from Alpha Vantage Api so you will need a key to start the backend server.
+## Stack:
+ - **Front End**: React tsx
+ - **Auth**: Supabase auth
+ - **Database**: Supabase postgres db
+ - **APIs**: Serverless functions + external
+ - **Backend**: Flask
 
 ## Site Structure
-
 ```mermaid
-graph TD;
-    HomePage-->About-->A["What is InvestAnalytics"];
-    HomePage-->Watchlist-->B["Pick your favorite stocks/crypto to watch"];
-    HomePage-->Recent News-->C["Look at recent news articles catered to your watchlist"];
+graph TD; 
+    HomePage-->Watchlist-->A["Add your favorite stocks/cryptocurrencies to watch"];
+    HomePage-->RecentNews-->B["Recent news catered to your personalized watchlist."];
+    HomePage-->Currency-->C["Check out our predictions on your favorite currency."]
