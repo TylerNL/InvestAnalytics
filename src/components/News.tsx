@@ -52,9 +52,8 @@ const News = () => {
     }
   };
 
-  // Fetch news based on watchlist or default tickers
   const fetchNews = async () => {
-    let tickers = "AAPL,BTC"; // Default fallback
+    let tickers = "AAPL,BTC"; // Default tickers
     
     if (!loadingWatchlist && watchlistItems.length > 0) {
       // Use watchlist tickers, limit to 10 to avoid URL length issues
@@ -63,7 +62,7 @@ const News = () => {
     }
 
     try {
-      const response = await fetch(`http://127.0.0.1:5000/api/news?tickers=${tickers}`);
+      const response = await fetch(`/api/news?tickers=${tickers}`);
       const data = await response.json();
       console.log('News data:', data);
       setArticles(data || []);
@@ -249,7 +248,7 @@ const News = () => {
       <div className="relative z-10 max-w-6xl mx-auto px-4 py-12">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl lg:text-5xl font-bold text-white mb-4">
+          <h1 className="text-4xl lg:text-5xl font-bold text-white mb-4 py-10">
             Latest{" "}
             <span className="bg-gradient-to-r from-primary-400 to-accent-400 bg-clip-text text-transparent">
               Market News
