@@ -356,9 +356,9 @@ const Watchlist = () => {
                 className="bg-black bg-opacity-80 rounded-xl p-4 shadow-md flex flex-col justify-between"
               >
                 <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-semibold mb-2 text-white">
+                  <a href={"./currencies/" + item.symbol} className="text-xl font-semibold mb-2 text-white">
                     {item.symbol}
-                  </h2>
+                  </a>
                   <button
                     className="mt-4 px-4 py-2 rounded bg-red-600 text-white hover:bg-red-500 transition-all"
                     onClick={() => removeFromWatchlist(item.id)}
