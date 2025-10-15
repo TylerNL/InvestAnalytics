@@ -49,15 +49,16 @@ const CurrencyDetail = () => {
     const cryptoCoins = [
         'BTC', 'ETH', 'XRP', 'HBAR', 'SOL', 'DOGE', 'ADA'
     ];
+    const [liveConnection, setLiveConnection] = useState(false);
 
     useEffect(() => {
         const fetchPrediction = async () => {
             try {
                 let upperSymbol = ticker?.toUpperCase();
-                if(cryptoCoins.includes(upperSymbol))
-                    upperSymbol += "-USD";
-                const predictionRes = await fetch(`/api/predictions?symbol=${upperSymbol}`);
+                const isCrypto = cryptoCoins.includes(upperSymbol);
 
+                const predictionRes = await fetch(`/api/predictions?symbol=${upperSymbol}`);
+                
                 if (!predictionRes.ok) {
                     throw new Error(`status: ${predictionRes.status}`);
                 }
@@ -68,7 +69,7 @@ const CurrencyDetail = () => {
                 const tableName = `${ticker.toLowerCase()}_gen_info`;
                 const { data: genInfoData, error: genInfoError } = await supabase
                     .from(tableName)
-                    .select('last_close, price_change, rationale, confidence')
+                    .select('last_close, price_change, rationale, confidence, market_cap')
                     .order('last_update', { ascending: false })
                     .limit(1)
                     .single();
@@ -99,10 +100,19 @@ const CurrencyDetail = () => {
                             ...predictionData?.info,
                             reasoning: genInfoData.rationale,
                             outlook: calculatedOutlook,
-                            predicted_price: marketOutlookPrice
+                            predicted_price: marketOutlookPrice,
+                            market_cap: genInfoData.market_cap
                         }
                     });
-                    setLivePrice(genInfoData.last_close);
+                    
+                    // Only set initial price if it's not crypto (crypto will use WebSocket)
+                    if (!isCrypto) {
+                        setLivePrice(genInfoData.last_close);
+                    } else if (!livePrice) {
+                        // Set initial price for crypto until WebSocket connects
+                        setLivePrice(genInfoData.last_close);
+                    }
+                    
                     setPriceChange({
                         amount: genInfoData.price_change,
                         percentage: genInfoData.price_change
@@ -215,6 +225,24 @@ const CurrencyDetail = () => {
             console.error('Error adding to watchlist:', err);
         } finally {
             setAddingToWatchlist(false);
+        }
+    };
+
+    const formatMarketCap = (marketCap: number | null | undefined): string => {
+        if (!marketCap || marketCap === 0) return 'N/A';
+        
+        const billion = 1_000_000_000;
+        const million = 1_000_000;
+        const trillion = 1_000_000_000_000;
+    
+        if (marketCap >= trillion) {
+            return `$${(marketCap / trillion).toFixed(2)}T`;
+        } else if (marketCap >= billion) {
+            return `$${(marketCap / billion).toFixed(2)}B`;
+        } else if (marketCap >= million) {
+            return `$${(marketCap / million).toFixed(2)}M`;
+        } else {
+            return `$${marketCap.toLocaleString()}`;
         }
     };
 
@@ -356,8 +384,8 @@ const CurrencyDetail = () => {
                                         <div className="text-xl font-mono">${latestPrices.low.toFixed(2)}</div>
                                     </div>
                                     <div className="bg-gray-800 p-3 rounded-lg">
-                                        <div className="text-sm text-gray-400">Volume</div>
-                                        <div className="text-xl">N/A</div>
+                                        <div className="text-sm text-gray-400">Market Cap</div>
+                                        <div className="text-xl">{formatMarketCap(currencyData?.info?.market_cap)}</div>
                                     </div>
                                 </div>
                             </div>
