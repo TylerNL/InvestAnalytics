@@ -46,16 +46,124 @@ const CurrencyDetail = () => {
     const [error, setError] = useState<string | null>(null);
     const [confidence, setConfidence] = useState(null);
     const [priceChange, setPriceChange] = useState({ amount: 0, percentage: 0 });
+    const [priceUpdated, setPriceUpdated] = useState(false);
     const cryptoCoins = [
         'BTC', 'ETH', 'XRP', 'HBAR', 'SOL', 'DOGE', 'ADA'
     ];
     const [liveConnection, setLiveConnection] = useState(false);
+
+    useEffect( () => {
+        const upperSymbol = ticker?.toUpperCase();
+        const isCrypto = cryptoCoins.includes(upperSymbol);
+
+        if (!isCrypto || !ticker) return;
+
+        let ws: WebSocket | null = null;
+        let reconnectTimeout: NodeJS.Timeout | null = null;
+        let pingTimeout: NodeJS.Timeout | null = null;
+        let isComponentMounted = true;
+        
+        const connectWebSocket = () => {
+            if(!isComponentMounted) return;
+
+            const symbol = `${ticker.toLowerCase()}usdt`;
+
+            ws = new WebSocket(`wss://fstream.binance.com/ws/${symbol}@miniTicker`);
+
+            const returnPong = () => {
+                if(pingTimeout) clearTimeout(pingTimeout);
+                pingTimeout = setTimeout(() => {
+                    console.log("Ping timeout");
+                    if(ws) ws.close();
+                }, 60000);
+            }
+
+            ws.onopen = () => {
+                console.log(`Connected to ${ticker.toUpperCase()} WebSocket`);
+                setLiveConnection(true);
+                returnPong();
+            };
+            
+            ws.onmessage = (event) => {
+                try {
+
+                    returnPong();
+
+                if(typeof event.data === 'string'){
+                    const data = JSON.parse(event.data);
+                    console.log('Websocket data:', data);
+
+                    if(data.ping){
+                        console.log("Received ping, sending pong");
+                        ws?.send(JSON.stringify({pong: data.ping}));
+                        return;
+                    }
+
+                    console.log('WebSocket data received:', data);
+                    
+                    if (data.e === '24hrMiniTicker' && data.c) {
+                        const price = parseFloat(data.c);
+                        if (!isNaN(price) && price > 0) {
+                            setLivePrice(price);
+                            setPriceUpdated(true);
+
+                            setTimeout(() => setPriceUpdated(false), 1000)
+                            console.log(`${ticker.toUpperCase()} live price: $${price.toFixed(2)}`);
+                        }
+                    }
+                }else{
+                    console.log("might be ping");
+                }
+                } catch (err) {
+                    console.error('Error parsing WebSocket data:', err);
+                }
+            };
+
+            ws.onerror = (error) => {
+                console.error(`WebSocket error for ${ticker}:`, error);
+                setLiveConnection(false);
+            };
+
+            ws.onclose = (event) => {
+                console.log(`WebSocket closed - Code: ${event.code}, Reason: ${event.reason || 'None'}`);
+                setLiveConnection(false);
+
+                // Only reconnect if component is still mounted and not a normal close
+                if (isComponentMounted && event.code !== 1000) {
+                    console.log('Reconnecting in 3 seconds...');
+                    reconnectTimeout = setTimeout(connectWebSocket, 3000);
+                }
+            };
+
+        };
+        connectWebSocket();
+
+        return () => {
+            console.log(`Cleaning up WebSocket for ${ticker}`);
+            isComponentMounted = false;
+            setLiveConnection(false);
+
+            if (reconnectTimeout) 
+                clearTimeout(reconnectTimeout);
+            if(pingTimeout)
+                clearTimeout(pingTimeout);
+            
+
+            if (ws) {
+                ws.close(1000, 'Component unmounting');
+                ws = null;
+            }
+        };
+    }, [ticker]);
 
     useEffect(() => {
         const fetchPrediction = async () => {
             try {
                 let upperSymbol = ticker?.toUpperCase();
                 const isCrypto = cryptoCoins.includes(upperSymbol);
+                if(isCrypto)
+                    upperSymbol += "-USD";
+                console.log(upperSymbol);
 
                 const predictionRes = await fetch(`/api/predictions?symbol=${upperSymbol}`);
                 
@@ -66,7 +174,8 @@ const CurrencyDetail = () => {
                 const predictionData = await predictionRes.json();
                 
                 // Fetch data from the ticker-specific gen_info table
-                const tableName = `${ticker.toLowerCase()}_gen_info`;
+                let dbSymbol = upperSymbol?.replace('-', '_').toLowerCase();
+                const tableName = `${dbSymbol.toLowerCase()}_gen_info`;
                 const { data: genInfoData, error: genInfoError } = await supabase
                     .from(tableName)
                     .select('last_close, price_change, rationale, confidence, market_cap')
@@ -105,17 +214,16 @@ const CurrencyDetail = () => {
                         }
                     });
                     
-                    // Only set initial price if it's not crypto (crypto will use WebSocket)
+                    // Testing for now.
                     if (!isCrypto) {
                         setLivePrice(genInfoData.last_close);
                     } else if (!livePrice) {
-                        // Set initial price for crypto until WebSocket connects
                         setLivePrice(genInfoData.last_close);
                     }
                     
                     setPriceChange({
                         amount: genInfoData.price_change,
-                        percentage: genInfoData.price_change
+                        percentage: (genInfoData.price_change / genInfoData.last_close) * 100
                     });
                     setConfidence(genInfoData.confidence);
                     console.log("Got info from gen_info");
@@ -315,6 +423,12 @@ const CurrencyDetail = () => {
     const latestPrices = getLatestPrices();
     const displayPrice = livePrice || latestPrices.close;
 
+    const priceGlowStyle = {
+    textShadow: priceUpdated 
+        ? '0 0 10px rgba(250, 204, 21, 0.8), 0 0 20px rgba(250, 204, 21, 0.6)' 
+        : 'none',
+    transition: 'text-shadow 0.2s ease-in-out'
+    };
     return (
         <div className="min-h-screen pt-24 p-6 text-white relative overflow-hidden" style={{ background: '#000000' }}>
             {backgroundSVG}
@@ -324,7 +438,10 @@ const CurrencyDetail = () => {
                     <div className="mb-4 lg:mb-0">
                         <h1 className="text-4xl font-bold text-yellow-400 mb-2">{ticker?.toUpperCase()}</h1>
                         <div className="flex items-center space-x-4">
-                            <span className="text-3xl font-mono text-white">
+                            <span 
+                                className={`text-3xl font-mono ${priceUpdated ? 'text-yellow-400' : 'text-white'}`}
+                                style={priceGlowStyle}
+                            >
                                 ${displayPrice.toFixed(2)}
                             </span>
                             <div className={`flex items-center space-x-1 ${priceChange.amount >= 0 ? 'text-green-400' : 'text-red-400'}`}>
@@ -454,8 +571,8 @@ const CurrencyDetail = () => {
                                                 return (
                                                     <tr key={date} className="border-b border-gray-800 hover:bg-gray-800 transition-colors">
                                                         <td className="py-3 px-4">{new Date(date).toLocaleDateString()}</td>
-                                                        <td className="py-3 px-4 font-mono">${values[1]?.toFixed(2)}</td>
                                                         <td className="py-3 px-4 font-mono">${values[2]?.toFixed(2)}</td>
+                                                        <td className="py-3 px-4 font-mono">${values[1]?.toFixed(2)}</td>
                                                         <td className="py-3 px-4 font-mono">${values[0]?.toFixed(2)}</td>
                                                         <td className="py-3 px-4">
                                                             <span className={`px-2 py-1 rounded text-xs ${
