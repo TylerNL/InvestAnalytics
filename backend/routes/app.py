@@ -64,9 +64,11 @@ def get_prediction_from_database(current_stock):
                     """)
 
         db_gen_info = cur.fetchone()
-        gen_info_dict["outlook"] = db_gen_info[1]
-        gen_info_dict["confidence"] = db_gen_info[2]
-        gen_info_dict["reasoning"] = db_gen_info[3]
+        gen_info_dict["current_price"] = db_gen_info[1]
+        gen_info_dict["outlook"] = db_gen_info[3]
+        gen_info_dict["confidence"] = db_gen_info[4]
+        gen_info_dict["reasoning"] = db_gen_info[5]
+        gen_info_dict["market_cap"] = db_gen_info[6]
 
         current_information["prices"] = prices_dict
         current_information["info"] = gen_info_dict

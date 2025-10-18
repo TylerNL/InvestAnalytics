@@ -43,6 +43,24 @@ const Watchlist = () => {
   );
   const [existanceError, setExistanceError] = useState(false);
 
+  const formatMarketCap = (marketCap: number | null | undefined): string => {
+        if (!marketCap || marketCap === 0) return 'N/A';
+
+        const billion = 1_000_000_000;
+        const million = 1_000_000;
+        const trillion = 1_000_000_000_000;
+
+        if (marketCap >= trillion) {
+            return `$${(marketCap / trillion).toFixed(2)}T`;
+        } else if (marketCap >= billion) {
+            return `$${(marketCap / billion).toFixed(2)}B`;
+        } else if (marketCap >= million) {
+            return `$${(marketCap / million).toFixed(2)}M`;
+        } else {
+            return `$${marketCap.toLocaleString()}`;
+        }
+    };
+
   // Array of loading messages
   const addingMessages = [
     "Getting historical information...",
@@ -119,13 +137,15 @@ const Watchlist = () => {
             const apiData = await response.json();
             console.log(`API data for ${item.symbol}:`, apiData);
 
-            const currentPrice = apiData.info.outlook || 0;
-            const priceChange = apiData.info.reasoning || 0;
+            const currentPrice = apiData.info.current_price || 0;
+            const priceChange = apiData.info.outlook || 0;
+            const marketCap = apiData.info.market_cap || 0;
 
             return {
               ...item,
               current_price: currentPrice,
               price_change: priceChange,
+              market_cap: marketCap,
               apiData: apiData,
             };
           } catch (error) {
@@ -366,6 +386,11 @@ const Watchlist = () => {
                     <img src={trash} alt="Remove" className="w-6 h-7" />
                   </button>
                 </div>
+                <div className="flex flex-wrap items-center gap-16 mt-2 w-full">
+                  <p className="text-white">
+                  Market Cap: 
+                  {item.market_cap ? (" " + formatMarketCap(item.market_cap)) : "N/A"}
+                </p>
                 <p className="text-white">
                   Current Price: $
                   {item.current_price ? item.current_price.toFixed(2) : "N/A"}
@@ -386,6 +411,8 @@ const Watchlist = () => {
                       : item.price_change.toFixed(2)
                     : "N/A"}
                 </p>
+                
+                </div>
               </div>
             ))}
           </div>
