@@ -37,6 +37,7 @@ const CurrencyDetail = () => {
     const navigate = useNavigate();
     const { session } = UserAuth() || {};
     const polygonAPI = import.meta.env.VITE_POLYGON_API_KEY;
+    const apiBaseURL = import.meta.env.VITE_API_URL;
 
     const [loading, setLoading] = useState(true);
     const [addingToWatchlist, setAddingToWatchlist] = useState(false);
@@ -165,7 +166,7 @@ const CurrencyDetail = () => {
                     upperSymbol += "-USD";
                 console.log(upperSymbol);
 
-                const predictionRes = await fetch(`/api/predictions?symbol=${upperSymbol}`);
+                const predictionRes = await fetch(`${apiBaseURL}/api/predictions?symbol=${upperSymbol}`);
                 
                 if (!predictionRes.ok) {
                     throw new Error(`status: ${predictionRes.status}`);
@@ -517,7 +518,7 @@ const CurrencyDetail = () => {
                                         String(currencyData?.info?.predicted_price || '').toLowerCase() === 'raise' ? 'text-green-400' :
                                         String(currencyData?.info?.predicted_price || '').toLowerCase() === 'drop' ? 'text-red-400' : 'text-gray-400'
                                     }`}>
-                                        {String(currencyData?.info?.predicted_price || 'stable').toUpperCase()}
+                                        ${String(currencyData?.info?.predicted_price.toFixed(2) || 'stable').toUpperCase()}
                                     </div>
                                     <div className="text-gray-400 text-sm">Market Outlook: {currencyData?.info?.outlook}</div>
                                 </div>
