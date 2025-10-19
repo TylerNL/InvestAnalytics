@@ -45,6 +45,7 @@ const Watchlist = () => {
   const cryptoCoins = [
         'BTC', 'ETH', 'XRP', 'HBAR', 'SOL', 'DOGE', 'ADA'
     ];
+  const apiBaseURL = import.meta.env.VITE_API_URL;
 
   const formatMarketCap = (marketCap: number | null | undefined): string => {
         if (!marketCap || marketCap === 0) return 'N/A';
@@ -124,11 +125,11 @@ const Watchlist = () => {
                     item.symbol += "-USD";
             // Make API call to get prediction data
             const response = await fetch(
-              `/api/predictions?symbol=${item.symbol.toUpperCase()}`
+              `${apiBaseURL}/api/predictions?symbol=${item.symbol.toUpperCase()}`
             );
 
             const currentPriceResponse = await fetch(
-              `/api/currentinfo?symbol=${item.symbol.toUpperCase()}`
+              `${apiBaseURL}/api/currentinfo?symbol=${item.symbol.toUpperCase()}`
             );
 
             if (!response.ok) {

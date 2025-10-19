@@ -6,9 +6,11 @@ import psycopg2
 import os
 from dotenv import load_dotenv
 from datetime import datetime, timedelta, timezone
+from flask_cors import CORS
 
 app = Flask(__name__)
 app.register_blueprint(news_api)
+CORS(app)
 
 load_dotenv()
 

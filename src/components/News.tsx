@@ -26,6 +26,7 @@ const News = () => {
   const [loading, setLoading] = useState(true);
   const [watchlistItems, setWatchlistItems] = useState<any[]>([]);
   const [loadingWatchlist, setLoadingWatchlist] = useState(true);
+  const apiBaseURL = import.meta.env.VITE_API_URL;
 
   // Fetch user's watchlist
   const fetchWatchlist = async () => {
@@ -62,7 +63,7 @@ const News = () => {
     }
 
     try {
-      const response = await fetch(`/api/news?tickers=${tickers}`);
+      const response = await fetch(`${apiBaseURL}/api/news?tickers=${tickers}`);
       const data = await response.json();
       console.log('News data:', data);
       setArticles(data || []);
