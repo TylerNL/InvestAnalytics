@@ -236,7 +236,12 @@ def get_info(current_stock: str):
         ticker = yf.Ticker(current_stock)
         print(ticker)
         current_historical = ticker.history(period="4mo", interval="1wk")
-        market_cap = ticker.info["marketCap"]
+        if "marketCap" in ticker.info:
+            market_cap = ticker.info["marketCap"]
+        elif "market_cap" in ticker.info:
+            market_cap = ticker.info["market_cap"]
+        else:
+            market_cap = ticker.info.get("marketCap", None)
     except Exception as e:
         print(f"Error fetching historical data: {e}", flush=True)
         current_historical = None
