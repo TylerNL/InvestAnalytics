@@ -1,7 +1,8 @@
-import { use, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { UserAuth } from "../context/AuthContext";
 import { supabase } from "../context/supabaseClient";
+import { websocketClient } from "@polygon.io/client-js";
 
 const backgroundSVG = (
     <svg
@@ -33,10 +34,11 @@ const backgroundSVG = (
 
 
 const CurrencyDetail = () => {
+
     const { ticker } = useParams();
     const navigate = useNavigate();
     const { session } = UserAuth() || {};
-    const polygonAPI = import.meta.env.VITE_POLYGON_API_KEY;
+    const finnhubAPI = import.meta.env.VITE_FINNHUB_API_KEY;
     const apiBaseURL = import.meta.env.VITE_API_URL;
 
     const [loading, setLoading] = useState(true);
@@ -51,98 +53,173 @@ const CurrencyDetail = () => {
     const cryptoCoins = [
         'BTC', 'ETH', 'XRP', 'HBAR', 'SOL', 'DOGE', 'ADA'
     ];
-    const [liveConnection, setLiveConnection] = useState(false);
+    const [liveCryptoConnection, setLiveCryptoConnection] = useState(false);
+    const [stockLiveConnection, setStockLiveConnection] = useState(false);
 
     useEffect( () => {
         const upperSymbol = ticker?.toUpperCase();
         const isCrypto = cryptoCoins.includes(upperSymbol);
 
-        if (!isCrypto || !ticker) return;
+        if (!ticker) return;
 
-        let ws: WebSocket | null = null;
+        let cryptoWs: WebSocket | null = null;
+        let stockWs: any = null;
         let reconnectTimeout: NodeJS.Timeout | null = null;
         let pingTimeout: NodeJS.Timeout | null = null;
         let isComponentMounted = true;
         
         const connectWebSocket = () => {
             if(!isComponentMounted) return;
-
-            const symbol = `${ticker.toLowerCase()}usdt`;
-
-            ws = new WebSocket(`wss://fstream.binance.com/ws/${symbol}@miniTicker`);
-
-            const returnPong = () => {
-                if(pingTimeout) clearTimeout(pingTimeout);
-                pingTimeout = setTimeout(() => {
-                    console.log("Ping timeout");
-                    if(ws) ws.close();
-                }, 60000);
+            if(cryptoWs){
+                cryptoWs.close();
+                cryptoWs = null;
             }
-
-            ws.onopen = () => {
-                console.log(`Connected to ${ticker.toUpperCase()} WebSocket`);
-                setLiveConnection(true);
-                returnPong();
-            };
+            if (stockWs) {
+                stockWs.close();
+                stockWs = null;
+            }
             
-            ws.onmessage = (event) => {
-                try {
+            if(isCrypto){
+                const symbol = `${ticker.toLowerCase()}usdt`;
+                cryptoWs = new WebSocket(`wss://fstream.binance.com/ws/${symbol}@miniTicker`);
+                console.log("Attempting to connect to websocket");
 
+                const returnPong = () => {
+                    if(pingTimeout) clearTimeout(pingTimeout);
+                    pingTimeout = setTimeout(() => {
+                        console.log("Ping timeout");
+                        if(cryptoWs) cryptoWs.close();
+                    }, 60000);
+                }
+
+                cryptoWs.onopen = () => {
+                    console.log(`Connected to ${ticker.toUpperCase()} WebSocket`);
+                    setLiveCryptoConnection(true);
                     returnPong();
+                };
+                
+                cryptoWs.onmessage = (event) => {
+                    try {
 
-                if(typeof event.data === 'string'){
-                    const data = JSON.parse(event.data);
-                    console.log('Websocket data:', data);
+                        returnPong();
 
-                    if(data.ping){
-                        console.log("Received ping, sending pong");
-                        ws?.send(JSON.stringify({pong: data.ping}));
-                        return;
+                    if(typeof event.data === 'string'){
+                        const data = JSON.parse(event.data);
+                        console.log('Websocket data:', data);
+
+                        if(data.ping){
+                            console.log("Received ping, sending pong");
+                            cryptoWs?.send(JSON.stringify({pong: data.ping}));
+                            return;
+                        }
+
+                        console.log('WebSocket data received:', data);
+                        
+                        if (data.e === '24hrMiniTicker' && data.c) {
+                            const price = parseFloat(data.c);
+                            if (!isNaN(price) && price > 0) {
+                                setLivePrice(price);
+                                setPriceUpdated(true);
+
+                                setTimeout(() => setPriceUpdated(false), 1000)
+                                console.log(`${ticker.toUpperCase()} live price: $${price.toFixed(2)}`);
+                            }
+                        }
+                    }else{
+                        console.log("might be ping");
                     }
+                    } catch (err) {
+                        console.error('Error parsing WebSocket data:', err);
+                    }
+                };
 
-                    console.log('WebSocket data received:', data);
+                cryptoWs.onerror = (error) => {
+                    console.error(`WebSocket error for ${ticker}:`, error);
+                    setLiveCryptoConnection(false);
+                };
+
+                cryptoWs.onclose = (event) => {
+                    console.log(`WebSocket closed - Code: ${event.code}, Reason: ${event.reason || 'None'}`);
+                    setLiveCryptoConnection(false);
+
+                    // Only reconnect if component is still mounted and not a normal close
+                    if (isComponentMounted && event.code !== 1000) {
+                        console.log('Reconnecting in 3 seconds...');
+                        reconnectTimeout = setTimeout(connectWebSocket, 3000);
+                    }
+                };
+
+        } else {
+            try {
+                console.log("Attempting to connect to Polygon for stock:", ticker);
+                
+                if (!finnhubAPI) {
+                    console.error("Missing Polygon API key - check your environment variables");
+                    setError("API configuration error. Please try again later.");
+                    setStockLiveConnection(false);
+                    return;
+                }
+                
+                stockWs = new WebSocket(`wss://ws.finnhub.io?token=${finnhubAPI}`);
+
+                stockWs.onopen = () => {
+                    console.log(`Connected to Finnhub WebSocket for ${ticker}`);
+                    stockWs.send(JSON.stringify({
+                        'type': 'subscribe',
+                        'symbol': ticker.toUpperCase()
+                    }));
+                    setStockLiveConnection(true);
+                };
+                
+                stockWs.onerror = (err) => {
+                    console.error(`Stock WebSocket error for ${ticker}:`, err);
+                    setStockLiveConnection(false);
+                };
+                
+                stockWs.onclose = (code, reason) => {
+                    console.log(`Stock WebSocket closed - Code: ${code}, Reason: ${reason || 'None'}`);
+                    setStockLiveConnection(false);
                     
-                    if (data.e === '24hrMiniTicker' && data.c) {
-                        const price = parseFloat(data.c);
-                        if (!isNaN(price) && price > 0) {
+                    if (isComponentMounted && code !== 1000) {
+                        console.log('Reconnecting stock websocket in 3 seconds...');
+                        reconnectTimeout = setTimeout(connectWebSocket, 3000);
+                    }
+                };
+
+                stockWs.onmessage = (event) => {
+                    console.log('Raw message received: ', event);
+                    try{
+                        const data = JSON.parse(event.data)
+                        if(data?.type === 'trade' && data?.data && data?.data.length > 0){
+                            console.log(`Attempting to get data`);
+                            const mostRecentTrade = data.data[data.data.length - 1];
+
+                            const price = mostRecentTrade.p;
+                            console.log(`Latest ${ticker} price: ${price}`);
                             setLivePrice(price);
                             setPriceUpdated(true);
-
-                            setTimeout(() => setPriceUpdated(false), 1000)
-                            console.log(`${ticker.toUpperCase()} live price: $${price.toFixed(2)}`);
+                            setTimeout(() => setPriceUpdated(false), 1000);
                         }
+                    }catch (err) {
+                        console.error("Error parsing stock websocket data:", err);
                     }
-                }else{
-                    console.log("might be ping");
-                }
-                } catch (err) {
-                    console.error('Error parsing WebSocket data:', err);
-                }
-            };
-
-            ws.onerror = (error) => {
-                console.error(`WebSocket error for ${ticker}:`, error);
-                setLiveConnection(false);
-            };
-
-            ws.onclose = (event) => {
-                console.log(`WebSocket closed - Code: ${event.code}, Reason: ${event.reason || 'None'}`);
-                setLiveConnection(false);
-
-                // Only reconnect if component is still mounted and not a normal close
-                if (isComponentMounted && event.code !== 1000) {
-                    console.log('Reconnecting in 3 seconds...');
-                    reconnectTimeout = setTimeout(connectWebSocket, 3000);
-                }
-            };
-
-        };
+                };
+            } catch (err) {
+                console.error("Failed to initialize Finnhub WebSocket:", err);
+                setError("Failed to connect to market data");
+                setStockLiveConnection(false);
+            }
+        } 
+    };
+    
         connectWebSocket();
 
         return () => {
             console.log(`Cleaning up WebSocket for ${ticker}`);
             isComponentMounted = false;
-            setLiveConnection(false);
+            
+            setLiveCryptoConnection(false);
+            setStockLiveConnection(false);
 
             if (reconnectTimeout) 
                 clearTimeout(reconnectTimeout);
@@ -150,12 +227,17 @@ const CurrencyDetail = () => {
                 clearTimeout(pingTimeout);
             
 
-            if (ws) {
-                ws.close(1000, 'Component unmounting');
-                ws = null;
+            if (cryptoWs) {
+                cryptoWs.close(1000, 'Component unmounting');
+                cryptoWs = null;
+            }
+
+            if(stockWs){
+                stockWs.close(1000, 'Component unmounting');
+                stockWs=null;
             }
         };
-    }, [ticker]);
+    }, [ticker, finnhubAPI]);
 
     useEffect(() => {
         const fetchPrediction = async () => {
@@ -166,7 +248,7 @@ const CurrencyDetail = () => {
                     upperSymbol += "-USD";
                 console.log(upperSymbol);
 
-                const predictionRes = await fetch(`${apiBaseURL}/api/predictions?symbol=${upperSymbol}`);
+                const predictionRes = await fetch(`/api/predictions?symbol=${upperSymbol}`);
                 
                 if (!predictionRes.ok) {
                     throw new Error(`status: ${predictionRes.status}`);
