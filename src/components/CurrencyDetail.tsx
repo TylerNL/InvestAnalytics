@@ -37,7 +37,7 @@ const CurrencyDetail = () => {
     const navigate = useNavigate();
     const { session } = UserAuth() || {};
     const polygonAPI = import.meta.env.VITE_POLYGON_API_KEY;
-    const apiBaseURL = import.meta.env.VITE_API_URL;
+    const apiBaseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
     const [loading, setLoading] = useState(true);
     const [addingToWatchlist, setAddingToWatchlist] = useState(false);

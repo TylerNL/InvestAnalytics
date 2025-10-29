@@ -107,9 +107,22 @@ def get_current_info():
         print(f"Error in prediction: {e}")
         return jsonify({"error": str(e)}), 500
 
+@app.route("/", methods=["GET"])
+def health_check():
+    return jsonify({
+        "status": "healthy",
+        "message": "InvestAnalytics API is running",
+        "endpoints": {
+            "predictions": "/api/predictions?symbol=SYMBOL",
+            "current_info": "/api/currentinfo?symbol=SYMBOL",
+            "news": "/api/news"
+        }
+    })
+
 @app.route("/api/news", methods=["GET"])
 def news():
     return jsonify({"message": "News route"})
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.getenv("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
